@@ -38,6 +38,7 @@ release: ## create and push a new tag
 bdi: ## build dblib image
 	docker buildx build --platform linux/amd64 --load -f Dockerfile -t dlib-dev .
 
-.PHONY: run
-run:
-	docker run -it --name dlib-dev dlib-dev:latest bash
+.PHONY: rdi
+rdi: ## run dlib image
+	docker run --rm -v $PWD:/app -w /app -it dlib-dev /bin/bash
+
