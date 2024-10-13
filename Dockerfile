@@ -1,8 +1,11 @@
 ARG CROSS="true"
 ARG GO_VERSION=1.23.2
+ARG UBUNTU_VERSION=24.04
 ARG DEBIAN_FRONTEND=noninteractive
 ARG BASE_DEBIAN_DISTRO="bullseye"
 ARG GOLANG_IMAGE="golang:${GO_VERSION}-${BASE_DEBIAN_DISTRO}"
+#ARG GOLANG_IMAGE="ubuntu:${UBUNTU_VERSION}"
+
 
 FROM ${GOLANG_IMAGE} AS base
 RUN echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache

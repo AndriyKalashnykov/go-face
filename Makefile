@@ -34,9 +34,9 @@ release: ## create and push a new tag
 	@git push
 	@echo "Done."
 
-.PHONY: build
-build: ## build Docker image
-	docker buildx build --load -f Dockerfile -t dlib-dev .
+.PHONY: bdi
+bdi: ## build dblib image
+	docker buildx build --platform linux/amd64 --load -f Dockerfile -t dlib-dev .
 
 .PHONY: run
 run:
