@@ -33,3 +33,11 @@ release: ## create and push a new tag
 	@git push origin ${NT}
 	@git push
 	@echo "Done."
+
+.PHONY: build
+build: ## build Docker image
+	docker buildx build --load -f Dockerfile -t dlib-dev .
+
+.PHONY: run
+run:
+	docker run -it --name dlib-dev dlib-dev:latest bash
