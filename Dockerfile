@@ -14,7 +14,7 @@ RUN sed -ri "s/(httpredir|deb).debian.org/${APT_MIRROR:-deb.debian.org}/g" /etc/
  && sed -ri "s/(security).debian.org/${APT_MIRROR:-security.debian.org}/g" /etc/apt/sources.list
 ENV GO111MODULE=off
 
-FROM base AS cross-false
+#FROM base AS cross-false
 
 FROM --platform=linux/amd64 base AS cross-true
 ARG DEBIAN_FRONTEND
@@ -28,23 +28,23 @@ RUN --mount=type=cache,sharing=locked,id=moby-cross-true-aptlib,target=/var/lib/
             crossbuild-essential-armel \
             crossbuild-essential-armhf
 
-FROM cross-${CROSS} as dev-base
+#FROM cross-${CROSS} AS dev-base
+#
+#FROM dev-base AS runtime-dev-cross-false
+#ARG DEBIAN_FRONTEND
+#RUN --mount=type=cache,sharing=locked,id=moby-cross-false-aptlib,target=/var/lib/apt \
+#    --mount=type=cache,sharing=locked,id=moby-cross-false-aptcache,target=/var/cache/apt \
+#        apt-get update && apt-get install -y --no-install-recommends \
+#            binutils-mingw-w64 \
+#            g++-mingw-w64-x86-64 \
+#            libapparmor-dev \
+#            libbtrfs-dev \
+#            libdevmapper-dev \
+#            libseccomp-dev \
+#            libsystemd-dev \
+#            libudev-dev
 
-FROM dev-base AS runtime-dev-cross-false
-ARG DEBIAN_FRONTEND
-RUN --mount=type=cache,sharing=locked,id=moby-cross-false-aptlib,target=/var/lib/apt \
-    --mount=type=cache,sharing=locked,id=moby-cross-false-aptcache,target=/var/cache/apt \
-        apt-get update && apt-get install -y --no-install-recommends \
-            binutils-mingw-w64 \
-            g++-mingw-w64-x86-64 \
-            libapparmor-dev \
-            libbtrfs-dev \
-            libdevmapper-dev \
-            libseccomp-dev \
-            libsystemd-dev \
-            libudev-dev
-
-FROM --platform=linux/amd64 runtime-dev-cross-false AS runtime-dev-cross-true
+FROM --platform=linux/amd64 cross-true AS runtime-dev-cross-true
 ARG DEBIAN_FRONTEND
 # These crossbuild packages rely on gcc-<arch>, but this doesn't want to install
 # on non-amd64 systems, so other architectures cannot crossbuild amd64.

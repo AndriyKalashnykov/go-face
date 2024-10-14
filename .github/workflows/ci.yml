@@ -28,5 +28,5 @@ jobs:
           cache: true
 
       - name: Run ${{ matrix.name }} tests
-        run: make
+        run: make test
 
