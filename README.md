@@ -1,4 +1,4 @@
-# go-face [![Build Status](https://travis-ci.org/Kagami/go-face.svg?branch=master)](https://travis-ci.org/Kagami/go-face) [![GoDoc](https://godoc.org/github.com/Kagami/go-face?status.svg)](https://godoc.org/github.com/Kagami/go-face)
+# go-face
 
 go-face implements face recognition for Go using [dlib](http://dlib.net), a
 popular machine learning toolkit. Read
@@ -91,7 +91,7 @@ To install go-face in your $GOPATH:
 go get github.com/AndriyKalashnykov/go-face
 ```
 
-For further details see [GoDoc documentation](https://godoc.org/github.com/Kagami/go-face).
+For further details see [GoDoc documentation](https://godoc.org/github.com/AndriyKalashnykov/go-face).
 
 ## Example
 
