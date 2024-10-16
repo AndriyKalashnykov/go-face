@@ -37,11 +37,11 @@ release: ## create and push a new tag
 .PHONY: bootstrap
 bootstrap: ## bootstrap build dblib image
 	docker buildx create --use --platform=linux/arm64,linux/amd64 --name multi-platform-builder
-	docker buildx inspect --bootstrap
+
 
 .PHONY: bdi
 bdi: ## build dblib image
-	docker buildx build --push --platform linux/amd64 -f Dockerfile -t ghcr.io/anriykalashnykov/go-face:latest .
+	docker buildx build --load --platform linux/amd64 -f Dockerfile -t anriykalashnykov/go-face:latest .
 
 .PHONY: rdi
 rdi: ## run dlib image

@@ -16,7 +16,7 @@ ENV GO111MODULE=off
 
 #FROM base AS cross-false
 
-FROM --platform=linux/amd64 base AS cross-true
+FROM base AS cross-true
 ARG DEBIAN_FRONTEND
 RUN dpkg --add-architecture arm64
 RUN dpkg --add-architecture armel
@@ -44,7 +44,7 @@ RUN --mount=type=cache,sharing=locked,id=moby-cross-true-aptlib,target=/var/lib/
 #            libsystemd-dev \
 #            libudev-dev
 
-FROM --platform=linux/amd64 cross-true AS runtime-dev-cross-true
+FROM cross-true AS runtime-dev-cross-true
 ARG DEBIAN_FRONTEND
 # These crossbuild packages rely on gcc-<arch>, but this doesn't want to install
 # on non-amd64 systems, so other architectures cannot crossbuild amd64.
@@ -63,4 +63,7 @@ FROM runtime-dev-cross-${CROSS} AS runtime-dev
 RUN apt-get update
 RUN apt-get install -y build-essential cmake curl
 RUN mkdir /dlib && cd /dlib && curl -sLO http://dlib.net/files/dlib-19.24.tar.bz2 && tar xf dlib-19.24.tar.bz2
-RUN cd /dlib/dlib-19.24 && mkdir build && cd build && cmake .. && cmake --build . --config Release && make install && rm -rf /dlib
+# -DDLIB_PNG_SUPPORT=ON -DDLIB_GIF_SUPPORT=ON -DDLIB_JPEG_SUPPORT=ON -DDLIB_NO_GUI_SUPPORT=ON
+# https://github.com/imishinist/dlib/blob/master/19.21/buster/Dockerfile
+RUN cd /dlib/dlib-19.24 && mkdir build && cd build && cmake .. && cmake --build . --config Release && make install && rm -rf /dlib \
+    rm dlib-19.24.tar.bz2 dlib-19.24.tar.gz dlib-19.24.tar
