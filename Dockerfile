@@ -27,4 +27,7 @@ COPY . .
 RUN --mount=target=. \
     --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg \
-    CGO_LDFLAGS="-static" GOOS=$TARGETOS GOARCH=$TARGETARCH /usr/local/go/bin/go build -tags static .
+     GOOS=linux GOARCH=amd64 /usr/local/go/bin/go build -ldflags="-w -s" -tags static .
+#    GOOS=linux CGO_ENABLED=1 GOARCH=amd64 /usr/local/go/bin/go build -tags static .
+
+#CGO_LDFLAGS="-static" GOOS=$TARGETOS GOARCH=$TARGETARCH
