@@ -28,7 +28,7 @@ jobs:
           cache: true
 
       - name: Run ${{ matrix.name }} tests
-        run: GOOS=linux GOARCH=amd64 /usr/local/go/bin/go build -ldflags="-w -s" -tags static .
+        run: GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -tags static .
 
   release-docker-images:
     if: github.ref_type == 'tag'
