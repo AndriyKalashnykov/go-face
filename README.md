@@ -62,6 +62,7 @@ from [go-face-testdata](https://github.com/Kagami/go-face-testdata) repo:
 ```bash
 
 # dbib-models source 
+
 mkdir testdata
 cd testdata
 wget https://github.com/davisking/dlib-models/raw/master/shape_predictor_5_face_landmarks.dat.bz2
@@ -70,6 +71,7 @@ wget https://github.com/davisking/dlib-models/raw/master/mmod_human_face_detecto
 wget https://github.com/Kagami/go-face-testdata/raw/master/models/shape_predictor_68_face_landmarks.dat
 
 # same from Kagami
+
 mkdir testdata
 cd testdata
 wget https://github.com/Kagami/go-face-testdata/raw/master/models/shape_predictor_5_face_landmarks.dat
