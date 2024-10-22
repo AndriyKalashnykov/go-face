@@ -24,14 +24,13 @@ FROM ghcr.io/andriykalashnykov/dlib-docker:v0.0.1 AS dlib-dev
 # Install Go
 RUN curl -sLO https://go.dev/dl/go1.23.2.linux-amd64.tar.gz && tar -C /usr/local -xzf go1.23.2.linux-amd64.tar.gz && rm -rf go1.23.2.linux-amd64.tar.gz
 
-#ENV PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig/
+ENV PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig/
 
 WORKDIR /app
 COPY . .
 
 RUN /usr/local/go/bin/go mod download
-
-#RUN /usr/local/go/bin/go test .
+RUN /usr/local/go/bin/go test .
 
 # Keep the container running
 CMD ["tail", "-f", "/dev/null"]
