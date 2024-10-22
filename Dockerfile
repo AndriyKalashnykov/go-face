@@ -28,6 +28,7 @@ ENV PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig/
 
 WORKDIR /app
 COPY . .
+COPY ./testdata testdata./
 
 RUN /usr/local/go/bin/go mod download
 RUN /usr/local/go/bin/go test .
