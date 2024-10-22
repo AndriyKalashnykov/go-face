@@ -36,8 +36,7 @@ jobs:
           cache: true
 
       - name: Run ${{ matrix.name }} tests
-        run: |
-          cd appmake test \
+        run: make test
 
   release-docker-images:
     if: github.ref_type == 'tag'
