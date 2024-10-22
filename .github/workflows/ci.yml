@@ -37,6 +37,7 @@ jobs:
 
       - name: Run ${{ matrix.name }} tests
         run: |
+          ls -al
           go test .
 
   release-docker-images:
