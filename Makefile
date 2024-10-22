@@ -11,7 +11,7 @@ help: ## list makefile targets
 
 .PHONY: testdata
 testdata: ## get test data
-	git clone https://github.com/Kagami/go-face-testdata testdatas
+	git clone https://github.com/Kagami/go-face-testdata testdata
 
 .PHONY: test
 test: ## run tests
@@ -40,7 +40,7 @@ bootstrap: ## bootstrap build docker image
 
 .PHONY: bdi
 bdi: ## build docker image
-	docker buildx build --load --platform linux/amd64 -f Dockerfile -t anriykalashnykov/go-face:latest .
+	docker buildx build -f Dockerfile -t anriykalashnykov/go-face:latest .
 
 .PHONY: rdi
 rdi: ## run docker image

@@ -36,7 +36,9 @@ jobs:
           cache: true
 
       - name: Run ${{ matrix.name }} tests
-        run: make test
+        run: |
+          git clone https://github.com/Kagami/go-face-testdata testdata \
+          go test .
 
   release-docker-images:
     if: github.ref_type == 'tag'
