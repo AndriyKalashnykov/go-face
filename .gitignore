@@ -27,5 +27,4 @@ vendor
 dist/
 main
 bin/app
-/testdata
 **coverage.out
