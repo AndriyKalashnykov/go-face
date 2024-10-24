@@ -38,12 +38,12 @@ release: ## create and push a new tag
 bootstrap: ## bootstrap build docker image
 	docker buildx create --use --platform=linux/arm64,linux/amd64 --name multi-platform-builder
 
-.PHONY: bdi
-bdi: ## build docker image
-	docker buildx build -f Dockerfile -t anriykalashnykov/go-face:latest .
+.PHONY: bdid
+bdid: ## build debian docker image
+	docker buildx build -f Dockerfile -t anriykalashnykov/go-face-debian:latest .
 
-.PHONY: rdi
-rdi: ## run docker image
-	docker run --rm -it anriykalashnykov/go-face:latest /bin/bash
+.PHONY: rdid
+rdid: ## run debian docker image
+	docker run --rm -it anriykalashnykov/go-face-debian:latest /bin/bash
 #	docker run --rm -v $PWD:/app -w /app -it anriykalashnykov/go-face:latest /bin/bash
 

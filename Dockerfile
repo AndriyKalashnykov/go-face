@@ -18,9 +18,9 @@
 #COPY --from=dlib-dev /usr/local/lib64/ /usr/local/lib64/
 
 # debian
-FROM ghcr.io/andriykalashnykov/dlib-docker:v0.0.1 AS dlib-dev
-# https://hub.docker.com/_/golang/
+FROM ghcr.io/andriykalashnykov/dlib-docker:v19.24.0 AS dlib-dev
 
+# https://hub.docker.com/_/golang/
 # Install Go
 RUN curl -sLO https://go.dev/dl/go1.23.2.linux-amd64.tar.gz && tar -C /usr/local -xzf go1.23.2.linux-amd64.tar.gz && rm -rf go1.23.2.linux-amd64.tar.gz
 
