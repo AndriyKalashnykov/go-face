@@ -22,7 +22,9 @@ FROM ghcr.io/andriykalashnykov/dlib-docker:v19.24.0 AS dlib-dev
 
 # https://hub.docker.com/_/golang/
 # Install Go
-RUN curl -sLO https://go.dev/dl/go1.23.2.linux-amd64.tar.gz && tar -C /usr/local -xzf go1.23.2.linux-amd64.tar.gz && rm -rf go1.23.2.linux-amd64.tar.gz
+RUN curl -sLO https://go.dev/dl/go1.23.2.linux-$(uname -m | sed -e 's/x86_64/amd64/' -e 's/\(arm\)\(64\)\?.*/\1\2/' -e 's/aarch64$/arm64/').tar.gz \
+    && tar -C /usr/local -xzf go1.23.2.linux-$(uname -m | sed -e 's/x86_64/amd64/' -e 's/\(arm\)\(64\)\?.*/\1\2/' -e 's/aarch64$/arm64/').tar.gz \
+    && rm -rf go1.23.2.linux-$(uname -m | sed -e 's/x86_64/amd64/' -e 's/\(arm\)\(64\)\?.*/\1\2/' -e 's/aarch64$/arm64/').tar.gz
 
 ENV PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig/
 
