@@ -21,7 +21,7 @@ jobs:
         go-version: [ 1.23.2 ]
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/andriykalashnykov/dlib-docker:v19.24.0
+      image: ghcr.io/andriykalashnykov/dlib-docker:v19.24.0@sha256:ffffcddbff875ee2269b9be10b5b83787864de63b6e04e789273f926c0f00131
     name: test (${{ matrix.name }})
     steps:
       - name: Checkout code
