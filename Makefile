@@ -47,3 +47,8 @@ rdid: ## run debian docker image
 	docker run --rm -it anriykalashnykov/go-face-debian:latest /bin/bash
 #	docker run --rm -v $PWD:/app -w /app -it anriykalashnykov/go-face:latest /bin/bash
 
+.PHONY: dt
+dt: ## delete tag
+	rm -f version.txt
+	git push --delete origin v0.0.1
+	git tag --delete v0.0.1

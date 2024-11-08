@@ -18,7 +18,7 @@
 #COPY --from=dlib-dev /usr/local/lib64/ /usr/local/lib64/
 
 # debian
-FROM ghcr.io/andriykalashnykov/dlib-docker:v19.24.0 AS dlib-dev
+FROM ghcr.io/andriykalashnykov/dlib-docker:v19.24.0-amd64 AS dlib-dev
 
 # https://hub.docker.com/_/golang/
 # Install Go
