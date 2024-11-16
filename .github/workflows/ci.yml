@@ -109,3 +109,4 @@ jobs:
 
       - name: Output container image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
+
