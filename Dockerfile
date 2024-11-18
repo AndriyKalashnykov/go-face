@@ -1,30 +1,18 @@
-#FROM ghcr.io/andriykalashnykov/dlib-docker:v0.0.1 AS dlib-dev
+ARG BUILDER_IMAGE="ghcr.io/andriykalashnykov/dlib-docker:v19.24.0"
 
+FROM ${BUILDER_IMAGE} AS builder
 
-#FROM golang:1.23.2 AS builder
+#RUN echo "I am running on $BUILDPLATFORM, building for $TARGETPLATFORM" > /log
 
-#COPY --from=dlib-dev /usr/local/include/dlib/external/libjpeg/*.h /usr/include/
-#COPY --from=dlib-dev /usr/local/include/dlib/ /usr/local/include/dlib/
-#COPY --from=dlib-dev /usr/local/lib64/ /usr/local/lib64/
-
-#ENV PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig/
-
-#RUN curl -sLO https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz && tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz && rm -rf go${GO_VERSION}.linux-amd64.tar.gz
-
-# alpine
-#FROM imishinist/dlib:19.21 AS dlib-dev
-#FROM golang:1.23.2-alpine3.20 AS builder
-#COPY --from=dlib-dev /usr/local/include/dlib/ /usr/local/include/dlib/
-#COPY --from=dlib-dev /usr/local/lib64/ /usr/local/lib64/
-
-# debian
-FROM ghcr.io/andriykalashnykov/dlib-docker:v19.24.0-amd64 AS dlib-dev
+ARG GO_VER="1.23.2"
+ARG TARGETOS
+ARG TARGETARCH
 
 # https://hub.docker.com/_/golang/
 # Install Go
-RUN curl -sLO https://go.dev/dl/go1.23.2.linux-$(uname -m | sed -e 's/x86_64/amd64/' -e 's/\(arm\)\(64\)\?.*/\1\2/' -e 's/aarch64$/arm64/').tar.gz \
-    && tar -C /usr/local -xzf go1.23.2.linux-$(uname -m | sed -e 's/x86_64/amd64/' -e 's/\(arm\)\(64\)\?.*/\1\2/' -e 's/aarch64$/arm64/').tar.gz \
-    && rm -rf go1.23.2.linux-$(uname -m | sed -e 's/x86_64/amd64/' -e 's/\(arm\)\(64\)\?.*/\1\2/' -e 's/aarch64$/arm64/').tar.gz
+RUN curl -sLO https://go.dev/dl/go$GO_VER.linux-$(uname -m | sed -e 's/x86_64/amd64/' -e 's/\(arm\)\(64\)\?\(v7l\)\?.*/\1\2\3/' -e 's/aarch64$/arm64/' -e 's/armv7l$/armv6l/').tar.gz \
+    && tar -C /usr/local -xzf go$GO_VER.linux-$(uname -m | sed -e 's/x86_64/amd64/' -e 's/\(arm\)\(64\)\?\(v7l\)\?.*/\1\2\3/' -e 's/aarch64$/arm64/' -e 's/armv7l$/armv6l/').tar.gz \
+    && rm -rf go$GO_VER.linux-$(uname -m | sed -e 's/x86_64/amd64/' -e 's/\(arm\)\(64\)\?\(v7l\)\?.*/\1\2\3/' -e 's/aarch64$/arm64/' -e 's/armv7l$/armv6l/').tar.gz
 
 ENV PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig/
 
