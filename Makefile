@@ -33,15 +33,15 @@ bootstrap: ## bootstrap build docker image
 	docker buildx create --use --platform=linux/arm64,linux/amd64,linux/arm/v7 --name multi-platform-builder
 
 bdid: ## build debian docker image
-	docker buildx build --load --platform linux/amd64 -f Dockerfile -t anriykalashnykov/go-face-debian:amd64 .
-	docker buildx build --load --platform linux/arm/v7 -f Dockerfile -t anriykalashnykov/go-face-debian:armv7 .
-	docker buildx build --load --platform linux/arm64 -f Dockerfile -t anriykalashnykov/go-face-debian:arm64 .
+	docker buildx build --load --platform linux/amd64 -f Dockerfile -t anriykalashnykov/go-face:amd64 .
+	docker buildx build --load --platform linux/arm/v7 -f Dockerfile -t anriykalashnykov/go-face:armv7 .
+	docker buildx build --load --platform linux/arm64 -f Dockerfile -t anriykalashnykov/go-face:arm64 .
 
 
 rdid: ## run debian docker image -v $PWD:/app -w /app
-	docker run --platform linux/amd64 --rm -it anriykalashnykov/go-face-debian:amd64 /bin/bash
-	docker run  --platform linux/arm/v7 --rm -it anriykalashnykov/go-face-debian:armv7 /bin/bash
-	docker run --platform linux/arm64 --rm -it anriykalashnykov/go-face-debian:arm64 /bin/bash
+	docker run --platform linux/amd64 --rm -it anriykalashnykov/go-face:amd64 /bin/bash
+	docker run  --platform linux/arm/v7 --rm -it anriykalashnykov/go-face:armv7 /bin/bash
+	docker run --platform linux/arm64 --rm -it anriykalashnykov/go-face:arm64 /bin/bash
 
 dt: ## delete tag
 	rm -f version.txt

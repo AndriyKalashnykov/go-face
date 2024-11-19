@@ -19,7 +19,7 @@ jobs:
     name: tests
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/andriykalashnykov/dlib-docker:v19.24.0
+      image: ghcr.io/andriykalashnykov/dlib-docker:v19.24.4
 
     strategy:
       matrix:
@@ -104,9 +104,9 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          platforms: linux/amd64, linux/arm/v7
+          platforms: linux/arm/v7, linux/arm64, linux/amd64
           build-args: |
-            BUILDER_IMAGE=ghcr.io/andriykalashnykov/dlib-docker:v19.24.0
+            BUILDER_IMAGE=ghcr.io/andriykalashnykov/dlib-docker:v19.24.4
             GO_VER=${{ matrix.go-version }}
           push: ${{ github.ref_type == 'tag' }}
           provenance: false
