@@ -7,7 +7,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 RUN DEBIAN_FRONTEND=${DEBIAN_FRONTEND} apt-get update
 RUN apt-get install -y ca-certificates
 
-ARG GO_VER=1.23.2
+ARG GO_VER=1.25.0
 ARG TARGETOS
 ARG TARGETARCH
 

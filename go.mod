@@ -1,3 +1,3 @@
 module github.com/AndriyKalashnykov/go-face
 
-go 1.23.2
+go 1.25.0

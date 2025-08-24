@@ -33,7 +33,7 @@ bootstrap: ## bootstrap build docker image
 	docker buildx create --use --platform=linux/arm64,linux/amd64,linux/arm/v7 --name multi-platform-builder
 
 bdid: ## build debian docker image
-	docker buildx use multi-platform-builder
+	#docker buildx use multi-platform-builder
 	docker buildx build --load --platform linux/amd64 -f Dockerfile -t anriykalashnykov/go-face:amd64 .
 	docker buildx build --load --platform linux/arm/v7 -f Dockerfile -t anriykalashnykov/go-face:armv7 .
 	docker buildx build --load --platform linux/arm64 -f Dockerfile -t anriykalashnykov/go-face:arm64 .
