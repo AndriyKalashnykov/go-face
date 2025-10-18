@@ -103,7 +103,7 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          platforms: linux/arm/v7, linux/arm64, linux/amd64
+          platforms: linux/arm/v7, linux/amd64
           build-args: |
             BUILDER_IMAGE=ghcr.io/andriykalashnykov/dlib-docker:v19.24.4
             GO_VER=${{ env.GO_VERSION }}
