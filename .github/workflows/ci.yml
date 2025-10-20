@@ -86,6 +86,9 @@ jobs:
         env:
           OWNER: '${{ github.repository_owner }}'
 
+      - name: OWNER_LC
+        run: echo ${{ env.OWNER_LC }}
+
       - name: Login to image repository
         uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3
         with:
@@ -93,10 +96,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GH_ACCESS_TOKEN }}
 
-      - name: GitHub Tag Name example
+      - name: GitHub Tag Name
         run: |
           echo "Tag name from GITHUB_REF_NAME: $GITHUB_REF_NAME"
           echo "Tag name from github.ref_name: ${{  github.ref_name }}"
+          echo "Tags: ${{ steps.meta.outputs.tags }}"
 
       - name: Docker meta
         id: meta
