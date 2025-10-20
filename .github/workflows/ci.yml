@@ -39,9 +39,17 @@ jobs:
           go tool cover -func=coverage.out | sort -rnk3
 
   release-docker-images:
+
     if: github.ref_type == 'tag'
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     needs: [ tests ]
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            platforms: linux/arm/v7,linux/amd64
+          - runner: macos-latest
+            platforms: linux/arm64
 
     steps:
       - name: Checkout
@@ -103,7 +111,7 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          platforms: linux/arm/v7, linux/amd64
+          platforms: ${{ matrix.platforms }}
           build-args: |
             BUILDER_IMAGE=ghcr.io/andriykalashnykov/dlib-docker:v19.24.4
             GO_VER=${{ env.GO_VERSION }}
