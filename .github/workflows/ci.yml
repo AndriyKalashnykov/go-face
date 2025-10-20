@@ -79,8 +79,6 @@ jobs:
           mkdir -p ~/.docker/cli-plugins
           ln -sfn /usr/local/opt/docker-compose/bin/docker-compose ~/.docker/cli-plugins/docker-compose
 
-          colima start
-
       - name: Convert owner to lower case
         shell: bash
         run: |
