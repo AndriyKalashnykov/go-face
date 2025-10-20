@@ -82,12 +82,12 @@ jobs:
       - name: Convert owner to lower case
         shell: bash
         run: |
-          echo "OWNER_LC=${OWNER,,}" >>${GITHUB_ENV}
+          echo "OWNER_LC=$(echo ${OWNER} | tr '[:upper:]' '[:lower:]')" >>${GITHUB_ENV}
         env:
           OWNER: '${{ github.repository_owner }}'
 
       - name: OWNER_LC
-        run: echo ${{ env.OWNER_LC }}
+        run: "echo ${{ env.OWNER_LC }}"
 
       - name: Login to image repository
         uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3
