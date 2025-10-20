@@ -82,7 +82,7 @@ jobs:
       - name: Convert owner to lower case
         shell: bash
         run: |
-          echo OWNER_LC=$(echo \$OWNER\ | tr '[:upper:]' '[:lower:]') >>${GITHUB_ENV}
+          echo "OWNER_LC=${OWNER,,}" >>${GITHUB_ENV}
         env:
           OWNER: '${{ github.repository_owner }}'
 
@@ -100,7 +100,6 @@ jobs:
         run: |
           echo "Tag name from GITHUB_REF_NAME: $GITHUB_REF_NAME"
           echo "Tag name from github.ref_name: ${{  github.ref_name }}"
-          echo "Tags: ${{ steps.meta.outputs.tags }}"
 
       - name: Docker meta
         id: meta
