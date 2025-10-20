@@ -46,8 +46,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - runner: ubuntu-latest
-            platforms: linux/arm/v7,linux/amd64
+#          - runner: ubuntu-latest
+#            platforms: linux/arm/v7,linux/amd64
           - runner: macos-latest
             platforms: linux/arm64
 
@@ -70,20 +70,25 @@ jobs:
         if: matrix.runner == 'ubuntu-latest'
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3
 
-      - name: Setup Colima and Docker (missing on MacOS)
+      - name: Setup Docker (missing on MacOS)
         if: matrix.runner == 'macos-latest'
         run: |
-          # Install Colima (provides Docker daemon on macOS)
-          brew install colima docker docker-buildx
+          # Install Docker 
+          brew install docker docker-compose docker-buildx
+          
+          # Link the Docker Compose v2 plugin so it's understood by the docker CLI
+          mkdir -p ~/.docker/cli-plugins
+          ln -sfn /usr/local/opt/docker-compose/bin/docker-compose ~/.docker/cli-plugins/docker-compose
+          
+          # Login to GitHub Container Registry
+          echo "${{ secrets.GH_ACCESS_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-          # Start Colima with QEMU explicitly (vz not supported in GitHub Actions)
-          colima start --cpu 4 --memory 8 --disk 100 --arch aarch64 --vm-type=qemu
-
-          # Create and use buildx builder
-          docker buildx create --use --name colima-builder --driver docker-container
+          docker buildx create --use --platform=linux/arm64,linux/amd64,linux/arm/v7 --name multi-platform-builder
 
           # Verify Docker is working
           docker info
+          
+          docker buildx build --load --platform linux/arm64 -f Dockerfile -t anriykalashnykov/go-face:arm64 .
 
       - name: Convert owner to lower case
         shell: bash
@@ -96,7 +101,7 @@ jobs:
         run: "echo ${{ env.OWNER_LC }}"
 
       - name: Login to image repository
-        if: matrix.runner == 'ubuntu-latest' || matrix.runner == 'macos-latest'
+        if: matrix.runner == 'ubuntu-latest'
         uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3
         with:
           registry: ghcr.io
