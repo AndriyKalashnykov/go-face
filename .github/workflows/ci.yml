@@ -76,8 +76,8 @@ jobs:
           # Install Colima (provides Docker daemon on macOS)
           brew install colima docker docker-buildx
 
-          # Start Colima with QEMU (vz not available in GitHub Actions)
-          colima start --cpu 4 --memory 8 --disk 100 --arch aarch64
+          # Start Colima with QEMU explicitly (vz not supported in GitHub Actions)
+          colima start --cpu 4 --memory 8 --disk 100 --arch aarch64 --vm-type=qemu
 
           # Create and use buildx builder
           docker buildx create --use --name colima-builder --driver docker-container
