@@ -79,7 +79,7 @@ jobs:
           # Login to GitHub Container Registry
           echo "${{ secrets.GH_ACCESS_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-          docker buildx create --use --platform=linux/arm64,linux/amd64,linux/arm/v7 --name multi-platform-builder
+          docker buildx create --platform=linux/arm64,linux/amd64,linux/arm/v7 --name multi-platform-builder
 
           # Verify Docker is working
           docker info
