@@ -74,7 +74,12 @@ jobs:
         if: matrix.runner == 'macos-latest'
         run: |
           # Install Docker 
-          brew install docker docker-compose docker-buildx
+          brew install docker docker-compose docker-buildx podman
+          
+          podman --version
+          podman machine init
+          podman machine start
+          
           
           # Login to GitHub Container Registry
           echo "${{ secrets.GH_ACCESS_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
@@ -82,9 +87,9 @@ jobs:
           # docker buildx create --use --platform=linux/arm64,linux/amd64,linux/arm/v7 --name multi-platform-builder
 
           # Verify Docker is working
-          docker info
+          # docker info
           
-          docker buildx build --load --platform linux/arm64 -f Dockerfile -t anriykalashnykov/go-face:arm64 .
+          # docker buildx build --load --platform linux/arm64 -f Dockerfile -t anriykalashnykov/go-face:arm64 .
 
       - name: Convert owner to lower case
         shell: bash
