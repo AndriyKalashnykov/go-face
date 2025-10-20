@@ -46,10 +46,10 @@ jobs:
     strategy:
       matrix:
         include:
-#          - runner: ubuntu-latest
-#            platforms: linux/arm/v7,linux/amd64
-          - runner: macos-latest
-            platforms: linux/arm64
+          - runner: ubuntu-latest
+            platforms: linux/arm/v7,linux/amd64
+#          - runner: macos-latest
+#            platforms: linux/arm64
 
     steps:
       - name: Checkout
