@@ -83,14 +83,13 @@ jobs:
       - name: Setup Podman (missing on MacOS)
         if: matrix.runner == 'macos-26' && github.ref_type == 'tag'
         run: |
-          # Install Podman and QEMU
-          brew install podman qemu
-          brew install --cask podman-desktop
+          # Install Podman
+          brew install podman
 
           podman --version
 
-          # Set CONTAINERS_MACHINE_PROVIDER to use QEMU (vfkit fails in CI)
-          export CONTAINERS_MACHINE_PROVIDER=qemu
+          # Use Apple Hypervisor (applehv) - supported provider on macOS
+          export CONTAINERS_MACHINE_PROVIDER=applehv
 
           # Initialize podman machine
           podman machine init \
