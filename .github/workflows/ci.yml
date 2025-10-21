@@ -62,6 +62,16 @@ jobs:
           GO_VERSION=$(grep '^go ' go.mod | awk '{print $2}')
           echo "GO_VERSION=$GO_VERSION" >> $GITHUB_ENV
 
+      - name: Convert owner to lower case
+        shell: bash
+        run: |
+          echo "OWNER_LC=$(echo ${OWNER} | tr '[:upper:]' '[:lower:]')" >>${GITHUB_ENV}
+        env:
+          OWNER: '${{ github.repository_owner }}'
+
+#      - name: OWNER_LC
+#        run: "echo ${{ env.OWNER_LC }}"
+
       - name: Set up QEMU
         if: matrix.runner == 'ubuntu-latest'
         uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3
@@ -70,36 +80,41 @@ jobs:
         if: matrix.runner == 'ubuntu-latest'
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3
 
-      - name: Setup Docker (missing on MacOS)
+      - name: Setup Podman (missing on MacOS)
         if: matrix.runner == 'macos-latest'
         run: |
-          # Install Docker 
-          brew install docker docker-compose docker-buildx podman
+          # Install Podman
+          brew install podman
           
           podman --version
-          podman machine init
+          
+          # Initialize and start podman machine with appropriate resources
+          podman machine init --cpus 4 --memory 8192 --disk-size 100 --rootful
           podman machine start
           
+          # Verify Podman is working
+          podman info
           
           # Login to GitHub Container Registry
-          echo "${{ secrets.GH_ACCESS_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          echo "${{ secrets.GH_ACCESS_TOKEN }}" | podman login ghcr.io -u ${{ github.actor }} --password-stdin
 
-          # docker buildx create --use --platform=linux/arm64,linux/amd64,linux/arm/v7 --name multi-platform-builder
-
-          # Verify Docker is working
-          # docker info
-          
-          # docker buildx build --load --platform linux/arm64 -f Dockerfile -t anriykalashnykov/go-face:arm64 .
-
-      - name: Convert owner to lower case
-        shell: bash
+      - name: Build images with Podman
+        if: matrix.runner == 'macos-latest'
         run: |
-          echo "OWNER_LC=$(echo ${OWNER} | tr '[:upper:]' '[:lower:]')" >>${GITHUB_ENV}
-        env:
-          OWNER: '${{ github.repository_owner }}'
+          # Build multi-arch image
+          podman build \
+            --platform linux/arm64 \
+            -f Dockerfile \
+            -t ghcr.io/${{ env.OWNER_LC }}/go-face:arm64 \
+            -t ghcr.io/${{ env.OWNER_LC }}/go-face:${{ github.ref_name }} \
+            .
 
-      - name: OWNER_LC
-        run: "echo ${{ env.OWNER_LC }}"
+      - name: Push images with Podman
+        if: matrix.runner == 'macos-latest' && github.ref_type == 'tag'
+        run: |  
+          # Push images
+          podman push ghcr.io/${{ env.OWNER_LC }}/go-face:arm64
+          podman push ghcr.io/${{ env.OWNER_LC }}/go-face:${{ github.ref_name }}
 
       - name: Login to image repository
         if: matrix.runner == 'ubuntu-latest'
@@ -109,13 +124,14 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GH_ACCESS_TOKEN }}
 
-      - name: GitHub Tag Name
-        run: |
-          echo "Tag name from GITHUB_REF_NAME: $GITHUB_REF_NAME"
-          echo "Tag name from github.ref_name: ${{  github.ref_name }}"
+#      - name: GitHub Tag Name
+#        run: |
+#          echo "Tag name from GITHUB_REF_NAME: $GITHUB_REF_NAME"
+#          echo "Tag name from github.ref_name: ${{  github.ref_name }}"
 
-      - name: Docker meta
+      - name: Build Docker meta
         id: meta
+        if: matrix.runner == 'ubuntu-latest'
         uses: docker/metadata-action@c1e51972afc2121e065aed6d45c65596fe445f3f # v5
         with:
           images: ghcr.io/${{ env.OWNER_LC }}/go-face
@@ -137,8 +153,9 @@ jobs:
             io.artifacthub.package.maintainers=[{\"name\":\"Andriy Kalashnykov\",\"email\":\"andriykalashnykov@gmail.com\"}]
             io.artifacthub.package.license=CC0
 
-      - name: Build and push
+      - name: Build and push Docker image
         id: docker_build
+        if: matrix.runner == 'ubuntu-latest'
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6
         with:
           context: .
@@ -154,5 +171,5 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Output container image digest
-        run: echo ${{ steps.docker_build.outputs.digest }}
+#      - name: Output container image digest
+#        run: echo ${{ steps.docker_build.outputs.digest }}
