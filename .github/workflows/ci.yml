@@ -88,13 +88,15 @@ jobs:
 
           podman --version
 
-          # Initialize podman machine with QEMU provider (vfkit fails in CI)
+          # Set CONTAINERS_MACHINE_PROVIDER to use QEMU (vfkit fails in CI)
+          export CONTAINERS_MACHINE_PROVIDER=qemu
+
+          # Initialize podman machine
           podman machine init \
             --cpus 4 \
             --memory 4096 \
             --disk-size 100 \
-            --rootful \
-            --provider qemu
+            --rootful
 
           podman machine start
 
