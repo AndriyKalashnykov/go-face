@@ -46,5 +46,5 @@ rdid: ## run debian docker image -v $PWD:/app -w /app
 
 dt: ## delete tag
 	rm -f version.txt
-	git push --delete origin v0.0.3
-	git tag --delete v0.0.3
+	git push --delete origin v0.0.2
+	git tag --delete v0.0.2
