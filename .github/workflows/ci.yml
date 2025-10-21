@@ -73,47 +73,47 @@ jobs:
 #        run: "echo ${{ env.OWNER_LC }}"
 
       - name: Set up QEMU
-        if: matrix.runner == 'ubuntu-latest'
+#        if: matrix.runner == 'ubuntu-latest'
         uses: docker/setup-qemu-action@29109295f81e9208d7d86ff1c6c12d2833863392 # v3
 
       - name: Set up Docker Buildx
-        if: matrix.runner == 'ubuntu-latest'
+#        if: matrix.runner == 'ubuntu-latest'
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3
 
-      - name: Setup Colima and Docker (missing on MacOS)
-        if: matrix.runner == 'macos-26' && github.ref_type == 'tag'
-        run: |
-          # Install Colima (provides Docker daemon on macOS)
-          brew install colima docker docker-buildx qemu
-
-          # Start Colima with QEMU explicitly (more stable in CI)
-          colima start --cpu 4 --memory 4 --disk 100 --arch aarch64 --vm-type=qemu
-
-          # Create and use buildx builder
-          docker buildx create --use --name colima-builder --driver docker-container
-
-          # Verify Docker is working
-          docker info
-
-          # Login to GitHub Container Registry
-          echo "${{ secrets.GH_ACCESS_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
-      - name: Build and push images with Docker
-        if: matrix.runner == 'macos-26' && github.ref_type == 'tag'
-        run: |
-          # Build and push ARM64 image
-          docker buildx build \
-            --platform linux/arm64 \
-            -f Dockerfile \
-            --build-arg BUILDER_IMAGE=ghcr.io/andriykalashnykov/dlib-docker:v19.24.4 \
-            --build-arg GO_VER=${{ env.GO_VERSION }} \
-            -t ghcr.io/${{ env.OWNER_LC }}/go-face:arm64 \
-            -t ghcr.io/${{ env.OWNER_LC }}/go-face:${{ github.ref_name }} \
-            --push \
-            .
+#      - name: Setup Colima and Docker (missing on MacOS)
+#        if: matrix.runner == 'macos-26' && github.ref_type == 'tag'
+#        run: |
+#          # Install Colima (provides Docker daemon on macOS)
+#          brew install colima docker docker-buildx qemu
+#
+#          # Start Colima with QEMU explicitly (more stable in CI)
+#          colima start --cpu 4 --memory 4 --disk 100 --arch aarch64 --vm-type=qemu
+#
+#          # Create and use buildx builder
+#          docker buildx create --use --name colima-builder --driver docker-container
+#
+#          # Verify Docker is working
+#          docker info
+#
+#          # Login to GitHub Container Registry
+#          echo "${{ secrets.GH_ACCESS_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+#
+#      - name: Build and push images with Docker
+#        if: matrix.runner == 'macos-26' && github.ref_type == 'tag'
+#        run: |
+#          # Build and push ARM64 image
+#          docker buildx build \
+#            --platform linux/arm64 \
+#            -f Dockerfile \
+#            --build-arg BUILDER_IMAGE=ghcr.io/andriykalashnykov/dlib-docker:v19.24.4 \
+#            --build-arg GO_VER=${{ env.GO_VERSION }} \
+#            -t ghcr.io/${{ env.OWNER_LC }}/go-face:arm64 \
+#            -t ghcr.io/${{ env.OWNER_LC }}/go-face:${{ github.ref_name }} \
+#            --push \
+#            .
 
       - name: Login to Docker image repository
-        if: matrix.runner == 'ubuntu-latest'
+#        if: matrix.runner == 'ubuntu-latest'
         uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3
         with:
           registry: ghcr.io
@@ -127,7 +127,7 @@ jobs:
 
       - name: Build Docker meta
         id: meta
-        if: matrix.runner == 'ubuntu-latest'
+#        if: matrix.runner == 'ubuntu-latest'
         uses: docker/metadata-action@c1e51972afc2121e065aed6d45c65596fe445f3f # v5
         with:
           images: ghcr.io/${{ env.OWNER_LC }}/go-face
@@ -151,7 +151,7 @@ jobs:
 
       - name: Build and push Docker image
         id: docker_build
-        if: matrix.runner == 'ubuntu-latest'
+#        if: matrix.runner == 'ubuntu-latest'
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6
         with:
           context: .
