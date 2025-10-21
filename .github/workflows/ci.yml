@@ -72,6 +72,12 @@ jobs:
 #      - name: OWNER_LC
 #        run: "echo ${{ env.OWNER_LC }}"
 
+      - name: Install Docker via Colima
+        if: matrix.runner == 'macos-26' && github.ref_type == 'tag'
+        run: |
+          brew install docker colima
+          colima start
+
       - name: Set up QEMU
 #        if: matrix.runner == 'ubuntu-latest'
         uses: docker/setup-qemu-action@v3
