@@ -69,14 +69,34 @@ jobs:
         env:
           OWNER: '${{ github.repository_owner }}'
 
-      - name: Install Docker via Colima
-        if: matrix.runner == 'macos-26' && github.ref_type == 'tag'
-        run: |
-          brew install docker docker-buildx orbstack
-          while ! docker info &> /dev/null; do sleep 2; done
+#      - name: Install Docker via Colima
+#        if: matrix.runner == 'macos-26' && github.ref_type == 'tag'
+#        run: |
+#          brew install docker docker-buildx orbstack
+#          while ! docker info &> /dev/null; do sleep 2; done
 #          lima lima-additional-guestagents qemu
 #          limactl start --name=default --vm-type=qemu --cpus=2 --memory=4 template://docker
 #          export DOCKER_HOST=unix://$HOME/.lima/default/sock/docker.sock
+
+      - name: Install Docker Desktop (macOS only)
+        if: runner.os == 'macOS'
+        run: |
+          brew install --cask docker
+          sudo /Applications/Docker.app/Contents/MacOS/Docker --unattended --install-privileged-components
+          open -a /Applications/Docker.app --args --unattended --accept-license
+          
+          # Wait up to 5 minutes for Docker to start
+          echo "Waiting for Docker..."
+          for i in {1..60}; do
+          if docker info &> /dev/null; then
+           echo "Docker is ready!"
+           break
+          fi
+          echo "Still waiting... ($i/60)"
+          sleep 5
+          done
+          
+          docker info
 
       - name: Set up QEMU
         if: matrix.runner == 'ubuntu-latest'
