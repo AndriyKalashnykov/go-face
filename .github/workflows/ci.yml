@@ -84,7 +84,7 @@ jobs:
         if: matrix.runner == 'macos-26' && github.ref_type == 'tag'
         run: |
           # Install Colima (provides Docker daemon on macOS)
-          brew install colima docker docker-buildx quemu
+          brew install colima docker docker-buildx qemu
 
           # Start Colima with QEMU explicitly (more stable in CI)
           colima start --cpu 4 --memory 4 --disk 100 --arch aarch64 --vm-type=qemu
