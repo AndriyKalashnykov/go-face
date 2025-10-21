@@ -78,25 +78,27 @@ jobs:
 #          limactl start --name=default --vm-type=qemu --cpus=2 --memory=4 template://docker
 #          export DOCKER_HOST=unix://$HOME/.lima/default/sock/docker.sock
 
-      - name: Install Docker Desktop (macOS only)
-        if: runner.os == 'macOS'
+      - name: Install and Start Docker Desktop (macOS)
         run: |
           brew install --cask docker
-          sudo /Applications/Docker.app/Contents/MacOS/Docker --unattended --install-privileged-components
-          open -a /Applications/Docker.app --args --unattended --accept-license
           
-          # Wait up to 5 minutes for Docker to start
-          echo "Waiting for Docker..."
+          # Start Docker Desktop app
+          open -a Docker
+          
+          # Wait for Docker daemon to be ready
+          echo "Waiting for Docker to start..."
           for i in {1..60}; do
           if docker info &> /dev/null; then
            echo "Docker is ready!"
+           docker version
            break
           fi
           echo "Still waiting... ($i/60)"
           sleep 5
           done
           
-          docker info
+          # Verify Docker is working
+          docker info || exit 1
 
       - name: Set up QEMU
         if: matrix.runner == 'ubuntu-latest'
