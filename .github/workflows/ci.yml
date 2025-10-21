@@ -80,49 +80,37 @@ jobs:
         if: matrix.runner == 'ubuntu-latest'
         uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3
 
-      - name: Setup Podman (missing on MacOS)
+      - name: Setup Colima and Docker (missing on MacOS)
         if: matrix.runner == 'macos-26' && github.ref_type == 'tag'
         run: |
-          # Install Podman
-          brew install podman
+          # Install Colima (provides Docker daemon on macOS)
+          brew install colima docker docker-buildx
 
-          podman --version
+          # Start Colima with QEMU explicitly (more stable in CI)
+          colima start --cpu 4 --memory 4 --disk 100 --arch aarch64 --vm-type=qemu
 
-          # Use Apple Hypervisor (applehv) - supported provider on macOS
-          export CONTAINERS_MACHINE_PROVIDER=applehv
+          # Create and use buildx builder
+          docker buildx create --use --name colima-builder --driver docker-container
 
-          # Initialize podman machine
-          podman machine init \
-            --cpus 4 \
-            --memory 4096 \
-            --disk-size 100 \
-            --rootful
-
-          podman machine start
-
-          # Verify Podman is working
-          podman info
+          # Verify Docker is working
+          docker info
 
           # Login to GitHub Container Registry
-          echo "${{ secrets.GH_ACCESS_TOKEN }}" | podman login ghcr.io -u ${{ github.actor }} --password-stdin
+          echo "${{ secrets.GH_ACCESS_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-      - name: Build images with Podman
+      - name: Build and push images with Docker
         if: matrix.runner == 'macos-26' && github.ref_type == 'tag'
         run: |
-          # Build multi-arch image
-          podman build \
+          # Build and push ARM64 image
+          docker buildx build \
             --platform linux/arm64 \
             -f Dockerfile \
+            --build-arg BUILDER_IMAGE=ghcr.io/andriykalashnykov/dlib-docker:v19.24.4 \
+            --build-arg GO_VER=${{ env.GO_VERSION }} \
             -t ghcr.io/${{ env.OWNER_LC }}/go-face:arm64 \
             -t ghcr.io/${{ env.OWNER_LC }}/go-face:${{ github.ref_name }} \
+            --push \
             .
-
-      - name: Push images with Podman
-        if: matrix.runner == 'macos-26' && github.ref_type == 'tag'
-        run: |  
-          # Push images
-          podman push ghcr.io/${{ env.OWNER_LC }}/go-face:arm64
-          podman push ghcr.io/${{ env.OWNER_LC }}/go-face:${{ github.ref_name }}
 
       - name: Login to Docker image repository
         if: matrix.runner == 'ubuntu-latest'
