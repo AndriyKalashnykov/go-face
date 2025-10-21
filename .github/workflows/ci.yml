@@ -48,7 +48,7 @@ jobs:
         include:
 #          - runner: ubuntu-latest
 #            platforms: linux/arm/v7,linux/amd64
-          - runner: macos-latest
+          - runner: macos-26
             platforms: linux/arm64
 
     steps:
