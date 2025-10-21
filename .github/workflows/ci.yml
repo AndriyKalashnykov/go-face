@@ -75,8 +75,8 @@ jobs:
       - name: Install Docker via Colima
         if: matrix.runner == 'macos-26' && github.ref_type == 'tag'
         run: |
-          brew install docker colima
-          colima start
+          brew install docker colima qemu
+          colima start --vm-type=qemu --arch aarch64 --cpu 2 --memory 4
 
       - name: Set up QEMU
 #        if: matrix.runner == 'ubuntu-latest'
