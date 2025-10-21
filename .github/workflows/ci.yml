@@ -89,7 +89,7 @@ jobs:
           podman --version
           
           # Initialize and start podman machine with appropriate resources
-          podman machine init --cpus 4 --memory 8192 --disk-size 100 --rootful
+          podman machine init --cpus 4 --memory 4096 --disk-size 100 --rootful
           podman machine start
           
           # Verify Podman is working
