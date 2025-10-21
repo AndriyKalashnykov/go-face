@@ -14,42 +14,42 @@ permissions:
 
 jobs:
 
-#  tests:
-#
-#    name: tests
-#    runs-on: ubuntu-latest
-#    container:
-#      image: ghcr.io/andriykalashnykov/dlib-docker:v19.24.4@sha256:91ea2d6b8b86c52069db6a554442862897fb53ba7365f691500dc0f06fe4578f
-#
-#    steps:
-#      - name: Checkout code
-#        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
-#        with:
-#          fetch-depth: 0
-#
-#      - name: Install Go
-#        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6
-#        with:
-#          go-version-file: 'go.mod'
-#          cache: true
-#
-#      - name: Run ${{ matrix.name }} tests
-#        run: |
-#          go test --cover -parallel=1 -v -coverprofile=coverage.out -v ./...
-#          go tool cover -func=coverage.out | sort -rnk3
+  tests:
+
+    name: tests
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/andriykalashnykov/dlib-docker:v19.24.4
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        with:
+          fetch-depth: 0
+
+      - name: Install Go
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Run ${{ matrix.name }} tests
+        run: |
+          go test --cover -parallel=1 -v -coverprofile=coverage.out -v ./...
+          go tool cover -func=coverage.out | sort -rnk3
 
   release-docker-images:
 
     if: github.ref_type == 'tag'
     runs-on: ${{ matrix.runner }}
-#    needs: [ tests ]
+    needs: [ tests ]
     strategy:
       matrix:
         include:
-#          - runner: ubuntu-latest
-#            platforms: linux/arm/v7,linux/amd64
-          - runner: macos-26
-            platforms: linux/arm64
+          - runner: ubuntu-latest
+            platforms: linux/arm/v7,linux/amd64
+#          - runner: macos-26
+#            platforms: linux/arm64
 
     steps:
       - name: Checkout
@@ -78,27 +78,27 @@ jobs:
 #          limactl start --name=default --vm-type=qemu --cpus=2 --memory=4 template://docker
 #          export DOCKER_HOST=unix://$HOME/.lima/default/sock/docker.sock
 
-      - name: Install and Start Docker Desktop (macOS)
-        run: |
-          brew install --cask docker
-          
-          # Start Docker Desktop app
-          open -a Docker
-          
-          # Wait for Docker daemon to be ready
-          echo "Waiting for Docker to start..."
-          for i in {1..300}; do
-          if docker info &> /dev/null; then
-           echo "Docker is ready!"
-           docker version
-           break
-          fi
-          echo "Still waiting... ($i/300)"
-          sleep 5
-          done
-          
-          # Verify Docker is working
-          docker info || exit 1
+#      - name: Install and Start Docker Desktop (macOS)
+#        run: |
+#          brew install --cask docker
+#
+#          # Start Docker Desktop app
+#          open -a Docker
+#
+#          # Wait for Docker daemon to be ready
+#          echo "Waiting for Docker to start..."
+#          for i in {1..300}; do
+#          if docker info &> /dev/null; then
+#           echo "Docker is ready!"
+#           docker version
+#           break
+#          fi
+#          echo "Still waiting... ($i/300)"
+#          sleep 5
+#          done
+#
+#          # Verify Docker is working
+#          docker info || exit 1
 
       - name: Set up QEMU
         if: matrix.runner == 'ubuntu-latest'
@@ -155,7 +155,7 @@ jobs:
 
       - name: Build Docker meta
         id: meta
-#        if: matrix.runner == 'ubuntu-latest'
+        if: matrix.runner == 'ubuntu-latest'
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ env.OWNER_LC }}/go-face
@@ -166,7 +166,6 @@ jobs:
             type=ref,event=tag
             type=ref,event=pr
             type=semver,pattern=v{{version}}
-            type=raw,value=arm64,enable=${{ matrix.runner == 'macos-26' }}
           labels: |
             org.opencontainers.image.vendor=Andriy Kalashnykov - andriykalashnykov@gmail.com
             org.opencontainers.image.title=Face recognition in Go with Dlib
@@ -179,7 +178,7 @@ jobs:
 
       - name: Build and push Docker image
         id: docker_build
-#        if: matrix.runner == 'ubuntu-latest'
+        if: matrix.runner == 'ubuntu-latest'
         uses: docker/build-push-action@v6
         with:
           context: .
