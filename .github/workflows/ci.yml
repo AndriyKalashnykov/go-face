@@ -75,7 +75,7 @@ jobs:
       - name: Install Docker via Colima
         if: matrix.runner == 'macos-26' && github.ref_type == 'tag'
         run: |
-          brew install docker lima qemu
+          brew install docker lima lima-additional-guestagents qemu
           limactl start --name=default --vm-type=qemu --cpus=2 --memory=4 template://docker
           export DOCKER_HOST=unix://$HOME/.lima/default/sock/docker.sock
 
