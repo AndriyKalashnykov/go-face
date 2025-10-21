@@ -75,16 +75,20 @@ jobs:
       - name: Install Docker via Colima
         if: matrix.runner == 'macos-26' && github.ref_type == 'tag'
         run: |
-          brew install docker lima lima-additional-guestagents qemu
-          limactl start --name=default --vm-type=qemu --cpus=2 --memory=4 template://docker
-          export DOCKER_HOST=unix://$HOME/.lima/default/sock/docker.sock
+          brew install docker docker-buildx  orbstack
+#          lima lima-additional-guestagents qemu
+#          limactl start --name=default --vm-type=qemu --cpus=2 --memory=4 template://docker
+#          export DOCKER_HOST=unix://$HOME/.lima/default/sock/docker.sock
+
+          # Wait for orbstack to be ready
+          while ! docker info &> /dev/null; do sleep 2; done
 
       - name: Set up QEMU
-#        if: matrix.runner == 'ubuntu-latest'
+        if: matrix.runner == 'ubuntu-latest'
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
-#        if: matrix.runner == 'ubuntu-latest'
+        if: matrix.runner == 'ubuntu-latest'
         uses: docker/setup-buildx-action@v3
 
 #      - name: Setup Colima and Docker (missing on MacOS)
