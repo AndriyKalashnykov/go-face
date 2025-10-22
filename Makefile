@@ -36,7 +36,7 @@ bdid: ## build debian docker image
 	#docker buildx use multi-platform-builder
 	docker buildx build --load --platform linux/amd64 -f Dockerfile -t anriykalashnykov/go-face:amd64 .
 	docker buildx build --load --platform linux/arm/v7 -f Dockerfile -t anriykalashnykov/go-face:armv7 .
-#	docker buildx build --load --platform linux/arm64 -f Dockerfile -t anriykalashnykov/go-face:arm64 .
+	docker buildx build --load --platform linux/arm64 -f Dockerfile -t anriykalashnykov/go-face:arm64 .
 #	docker buildx build --load --platform linux/arm64 -f Dockerfile --build-arg BUILDER_IMAGE=ghcr.io/andriykalashnykov/dlib-docker:v19.24.4 --build-arg GO_VER=1.25.3 -t ghcr.io/andriykalashnykov/go-face:v0.0.2 -t ghcr.io/andriykalashnykov/go-face:latest --push .
 #	docker build --platform linux/arm64 -f Dockerfile --build-arg BUILDER_IMAGE=ghcr.io/andriykalashnykov/dlib-docker:v19.24.4 --build-arg GO_VER=1.25.3 -t ghcr.io/andriykalashnykov/go-face:v0.0.2 -t ghcr.io/andriykalashnykov/go-face:latest --push .
 
