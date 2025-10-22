@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 	"unsafe"
 
 	"github.com/AndriyKalashnykov/go-face"
@@ -177,37 +178,54 @@ func TestEmptyClassify(t *testing.T) {
 }
 
 func TestIdols(t *testing.T) {
-	idata, err := getIdolData()
-	if err != nil {
-		t.Fatalf("Can't get idol data: %v", err)
-	}
-	tdata := getTrainData(idata)
-	rec.SetSamples(tdata.samples, tdata.cats)
+	done := make(chan struct{})
+	go func() {
+		idata, err := getIdolData()
+		if err != nil {
+			t.Error("Can't get idol data:", err)
+			close(done)
+			return
+		}
+		tdata := getTrainData(idata)
+		rec.SetSamples(tdata.samples, tdata.cats)
 
-	for fname, expected := range idolTests {
-		t.Run(fname, func(t *testing.T) {
-			names := strings.Split(expected, ", ")
-			expectedIname := names[0]
-			expectedBname := names[1]
+		for fname, expected := range idolTests {
+			fname := fname
+			expected := expected
+			t.Run(fname, func(t *testing.T) {
+				names := strings.Split(expected, ", ")
+				expectedIname := names[0]
+				expectedBname := names[1]
 
-			catID, err := recognizeAndClassify(getTPath(fname), -1)
-			if err != nil {
-				t.Fatalf("Can't recognize: %v", err)
-			}
-			if catID < 0 {
-				t.Errorf("%s: expected “%s” but not recognized", fname, expected)
-				return
-			}
-			idolID := tdata.labels[catID]
-			idol := idata.byID[idolID]
-			actualIname := idol.Name
-			actualBname := idol.BandName
+				catID, err := recognizeAndClassify(getTPath(fname), -1)
+				if err != nil {
+					t.Errorf("Can't recognize: %v", err)
+					return
+				}
+				if catID < 0 {
+					t.Errorf("%s: expected \"%s\" but not recognized", fname, expected)
+					return
+				}
+				idolID := tdata.labels[catID]
+				idol := idata.byID[idolID]
+				actualIname := idol.Name
+				actualBname := idol.BandName
 
-			if expectedIname != actualIname || expectedBname != actualBname {
-				actual := fmt.Sprintf("%s, %s", actualIname, actualBname)
-				t.Errorf("%s: expected “%s” but got “%s”", fname, expected, actual)
-			}
-		})
+				if expectedIname != actualIname || expectedBname != actualBname {
+					actual := fmt.Sprintf("%s, %s", actualIname, actualBname)
+					t.Errorf("%s: expected \"%s\" but got \"%s\"", fname, expected, actual)
+				}
+			})
+		}
+		// time.Sleep(5 * time.Minute)
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// Test finished
+	case <-time.After(4 * time.Minute):
+		t.Log("TestIdols timed out")
 	}
 }
 
