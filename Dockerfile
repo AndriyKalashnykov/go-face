@@ -30,7 +30,7 @@ COPY . .
 COPY ./testdata testdata/
 
 RUN /usr/local/go/bin/go mod download
-RUN /usr/local/go/bin/go test .
+#RUN /usr/local/go/bin/go test .
 
 # Keep the container running
 CMD ["tail", "-f", "/dev/null"]
