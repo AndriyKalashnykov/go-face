@@ -11,7 +11,7 @@ article for some background details if you're new to
 To compile go-face you need to have dlib (>= 19.10) and libjpeg development
 packages installed.
 
-### Ubuntu 18.10+, Debian sid
+### Ubuntu 18.10+, Debian
 
 Latest versions of Ubuntu and Debian provide suitable dlib package so just run:
 

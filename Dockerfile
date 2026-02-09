@@ -1,4 +1,4 @@
-ARG BUILDER_IMAGE="ghcr.io/andriykalashnykov/dlib-docker:v19.24.4@sha256:91ea2d6b8b86c52069db6a554442862897fb53ba7365f691500dc0f06fe4578f"
+ARG BUILDER_IMAGE="ghcr.io/andriykalashnykov/dlib-docker:v20.0.0"
 
 FROM ${BUILDER_IMAGE} AS builder
 
@@ -7,7 +7,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 RUN DEBIAN_FRONTEND=${DEBIAN_FRONTEND} apt-get update
 RUN apt-get install -y ca-certificates
 
-ARG GO_VER=1.25.3
+ARG GO_VER=1.25.7
 ARG TARGETOS
 ARG TARGETARCH
 
