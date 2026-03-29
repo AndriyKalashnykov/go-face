@@ -4,7 +4,7 @@ APP_NAME       := go-face
 CURRENTTAG     := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "dev")
 
 # === Tool Versions (pinned) ===
-GOLANGCI_VERSION := 2.1.6
+GOLANGCI_VERSION := 2.11.4
 HADOLINT_VERSION := 2.12.0
 ACT_VERSION      := 0.2.86
 NVM_VERSION      := 0.40.4

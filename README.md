@@ -29,7 +29,7 @@ make run       # run the example
 | [Go](https://go.dev/dl/) | See `go.mod` | Go compiler and runtime |
 | [Docker](https://www.docker.com/) | latest | Container image builds |
 | [dlib](http://dlib.net/compile.html) | >= 19.10 | Face detection/recognition C++ library |
-| [golangci-lint](https://golangci-lint.run/) | 2.1.6 | Static analysis (auto-installed by `make deps`) |
+| [golangci-lint](https://golangci-lint.run/) | 2.11.4 | Static analysis (auto-installed by `make deps`) |
 | [act](https://github.com/nektos/act) | 0.2.86 | Run GitHub Actions locally (optional, auto-installed by `make deps-act`) |
 
 Install all required dependencies:
