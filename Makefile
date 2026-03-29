@@ -2,6 +2,7 @@
 
 projectname    ?= go-face
 CURRENTTAG     := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "dev")
+NVM_VERSION    := 0.40.4
 
 #help: @ List available tasks
 help:
@@ -81,25 +82,20 @@ tag-delete:
 	@git push --delete origin v0.0.3
 	@git tag --delete v0.0.3
 
-#bootstrap-renovate: @ Install nvm and npm for renovate
-bootstrap-renovate:
-	@if [ ! -d "$$HOME/.nvm" ]; then \
-		echo "Installing nvm..."; \
-		curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash; \
+#renovate-bootstrap: @ Install nvm and npm for Renovate
+renovate-bootstrap:
+	@command -v node >/dev/null 2>&1 || { \
+		echo "Installing nvm $(NVM_VERSION)..."; \
+		curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v$(NVM_VERSION)/install.sh | bash; \
 		export NVM_DIR="$$HOME/.nvm"; \
 		[ -s "$$NVM_DIR/nvm.sh" ] && . "$$NVM_DIR/nvm.sh"; \
 		nvm install --lts; \
-		nvm use --lts; \
-	else \
-		echo "nvm already installed"; \
-		export NVM_DIR="$$HOME/.nvm"; \
-		[ -s "$$NVM_DIR/nvm.sh" ] && . "$$NVM_DIR/nvm.sh"; \
-	fi
+	}
 
-#validate-renovate: @ Validate renovate configuration
-validate-renovate: bootstrap-renovate
-	@npx -p renovate -c 'renovate-config-validator'
+#renovate-validate: @ Validate Renovate configuration
+renovate-validate: renovate-bootstrap
+	@npx --yes renovate --platform=local
 
 .PHONY: help deps-go deps build lint run testdata test update ci \
 	release bootstrap image-build image-run tag-delete \
-	bootstrap-renovate validate-renovate
+	renovate-bootstrap renovate-validate
