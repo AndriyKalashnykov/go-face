@@ -13,7 +13,7 @@ Go library for face recognition using [dlib](http://dlib.net). Wraps dlib's face
 - Go (version from `go.mod`)
 - Docker (for container builds)
 - dlib (>= 19.10) and libjpeg development packages
-- golangci-lint (auto-installed by `make deps-go`)
+- golangci-lint (auto-installed by `make deps-lint`)
 
 ### Ubuntu/Debian
 
@@ -85,7 +85,8 @@ The `release-docker-images` job has elevated permissions (`contents: write`, `pa
 | Target | Description |
 |--------|-------------|
 | `make help` | List available tasks |
-| `make deps-go` | Check Go is installed and install golangci-lint |
+| `make deps-go` | Check Go is installed |
+| `make deps-lint` | Install golangci-lint for static analysis |
 | `make deps` | Check required tools (Go + Docker) |
 | `make clean` | Remove build artifacts |
 | `make build` | Build the Go project |

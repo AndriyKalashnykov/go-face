@@ -18,8 +18,11 @@ help:
 #deps-go: @ Check Go is installed
 deps-go:
 	@command -v go >/dev/null 2>&1 || { echo "Error: Go required. See https://go.dev/doc/install"; exit 1; }
+
+#deps-lint: @ Install golangci-lint for static analysis
+deps-lint: deps-go
 	@command -v golangci-lint >/dev/null 2>&1 || { echo "Installing golangci-lint v$(GOLANGCI_VERSION)..."; \
-		go install github.com/golangci/golangci-lint/cmd/golangci-lint@v$(GOLANGCI_VERSION); }
+		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b $$(go env GOPATH)/bin v$(GOLANGCI_VERSION); }
 
 #deps: @ Check required tools (Go + Docker)
 deps: deps-go
@@ -35,7 +38,7 @@ build: deps-go
 	@go build -v ./...
 
 #lint: @ Run static analysis and Dockerfile linting
-lint: deps-go deps-hadolint
+lint: deps-lint deps-hadolint
 	@golangci-lint run ./...
 	@hadolint Dockerfile
 
@@ -127,7 +130,7 @@ renovate-bootstrap:
 renovate-validate: renovate-bootstrap
 	@npx --yes renovate --platform=local
 
-.PHONY: help deps-go deps clean build lint run testdata test update ci \
+.PHONY: help deps-go deps-lint deps clean build lint run testdata test update ci \
 	release bootstrap image-build image-run tag-delete \
 	deps-hadolint deps-act ci-run \
 	renovate-bootstrap renovate-validate
