@@ -8,11 +8,10 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  cancel-in-progress: true
 
 permissions:
-  contents: write
-  packages: write
+  contents: read
 
 jobs:
 
@@ -35,23 +34,22 @@ jobs:
           go-version-file: 'go.mod'
           cache: true
 
-      - name: Run ${{ matrix.name }} tests
-        run: |
-          go test --cover -parallel=1 -v -coverprofile=coverage.out -v ./...
-          go tool cover -func=coverage.out | sort -rnk3
+      - name: Run tests
+        run: make test
 
   release-docker-images:
 
     if: github.ref_type == 'tag'
     runs-on: ${{ matrix.runner }}
     needs: [ tests ]
+    permissions:
+      contents: write
+      packages: write
     strategy:
       matrix:
         include:
           - runner: ubuntu-latest
             platforms: linux/arm/v7,linux/amd64,linux/arm64
-#          - runner: macos-26
-#            platforms: linux/arm64
 
     steps:
       - name: Checkout
@@ -71,103 +69,30 @@ jobs:
         env:
           OWNER: '${{ github.repository_owner }}'
 
-#      - name: Install Docker via Colima
-#        if: matrix.runner == 'macos-26' && github.ref_type == 'tag'
-#        run: |
-#          brew install docker docker-buildx orbstack
-#          while ! docker info &> /dev/null; do sleep 2; done
-#          lima lima-additional-guestagents qemu
-#          limactl start --name=default --vm-type=qemu --cpus=2 --memory=4 template://docker
-#          export DOCKER_HOST=unix://$HOME/.lima/default/sock/docker.sock
-
-#      - name: Install and Start Docker Desktop (macOS)
-#        run: |
-#          brew install --cask docker
-#
-#          # Start Docker Desktop app
-#          open -a Docker
-#
-#          # Wait for Docker daemon to be ready
-#          echo "Waiting for Docker to start..."
-#          for i in {1..300}; do
-#          if docker info &> /dev/null; then
-#           echo "Docker is ready!"
-#           docker version
-#           break
-#          fi
-#          echo "Still waiting... ($i/300)"
-#          sleep 5
-#          done
-#
-#          # Verify Docker is working
-#          docker info || exit 1
-
       - name: Set up QEMU
-        if: matrix.runner == 'ubuntu-latest'
         uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4
 
       - name: Set up Docker Buildx
-        if: matrix.runner == 'ubuntu-latest'
         uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4
 
-#      - name: Setup Colima and Docker (missing on MacOS)
-#        if: matrix.runner == 'macos-26' && github.ref_type == 'tag'
-#        run: |
-#          # Install Colima (provides Docker daemon on macOS)
-#          brew install colima docker docker-buildx qemu
-#
-#          # Start Colima with QEMU explicitly (more stable in CI)
-#          colima start --cpu 4 --memory 4 --disk 100 --arch aarch64 --vm-type=qemu
-#
-#          # Create and use buildx builder
-#          docker buildx create --use --name colima-builder --driver docker-container
-#
-#          # Verify Docker is working
-#          docker info
-#
-#          # Login to GitHub Container Registry
-#          echo "${{ secrets.GH_ACCESS_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-#
-#      - name: Build and push images with Docker
-#        if: matrix.runner == 'macos-26' && github.ref_type == 'tag'
-#        run: |
-#          # Build and push ARM64 image
-#          docker buildx build \
-#            --platform linux/arm64 \
-#            -f Dockerfile \
-#            --build-arg BUILDER_IMAGE=ghcr.io/andriykalashnykov/dlib-docker:v19.24.4 \
-#            --build-arg GO_VER=${{ env.GO_VERSION }} \
-#            -t ghcr.io/${{ env.OWNER_LC }}/go-face:arm64 \
-#            -t ghcr.io/${{ env.OWNER_LC }}/go-face:${{ github.ref_name }} \
-#            --push \
-#            .
-
       - name: Login to Docker image repository
-#        if: matrix.runner == 'ubuntu-latest'
         uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GH_ACCESS_TOKEN }}
 
-#      - name: GitHub Tag Name
-#        run: |
-#          echo "Tag name from GITHUB_REF_NAME: $GITHUB_REF_NAME"
-#          echo "Tag name from github.ref_name: ${{  github.ref_name }}"
-
       - name: Build Docker meta
         id: meta
-        if: matrix.runner == 'ubuntu-latest'
         uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf # v6
         with:
           images: ghcr.io/${{ env.OWNER_LC }}/go-face
           flavor: |
-            latest=${{ matrix.runner == 'ubuntu-latest' }}
+            latest=true
           tags: |
-            type=ref,event=branch
-            type=ref,event=tag
-            type=ref,event=pr
             type=semver,pattern=v{{version}}
+            type=semver,pattern=v{{major}}.{{minor}}
+            type=semver,pattern=v{{major}}
           labels: |
             org.opencontainers.image.vendor=Andriy Kalashnykov - andriykalashnykov@gmail.com
             org.opencontainers.image.title=Face recognition in Go with Dlib
@@ -180,7 +105,6 @@ jobs:
 
       - name: Build and push Docker image
         id: docker_build
-        if: matrix.runner == 'ubuntu-latest'
         uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7
         with:
           context: .
@@ -189,12 +113,9 @@ jobs:
           build-args: |
             BUILDER_IMAGE=ghcr.io/andriykalashnykov/dlib-docker:v19.24.4
             GO_VER=${{ env.GO_VERSION }}
-          push: ${{ github.ref_type == 'tag' }}
+          push: true
           provenance: false
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-#      - name: Output container image digest
-#        run: echo ${{ steps.docker_build.outputs.digest }}
