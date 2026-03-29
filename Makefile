@@ -9,22 +9,25 @@ help:
 	@echo "Commands :"
 	@grep -E '[a-zA-Z\.\-]+:.*?@ .*$$' $(MAKEFILE_LIST)| tr -d '#' | awk 'BEGIN {FS = ":.*?@ "}; {printf "\033[32m%-25s\033[0m - %s\n", $$1, $$2}'
 
-#deps: @ Install required tools (idempotent)
-deps:
+#deps-go: @ Check Go is installed
+deps-go:
 	@command -v go >/dev/null 2>&1 || { echo "Error: Go required. See https://go.dev/doc/install"; exit 1; }
+
+#deps: @ Check required tools (Go + Docker)
+deps: deps-go
 	@command -v docker >/dev/null 2>&1 || { echo "Error: Docker required. See https://docs.docker.com/get-docker/"; exit 1; }
 
 #build: @ Build the Go project
-build: deps
+build: deps-go
 	@go build -v ./...
 
 #lint: @ Run static analysis
-lint: deps
+lint: deps-go
 	@command -v golangci-lint >/dev/null 2>&1 || { echo "Error: golangci-lint required. See https://golangci-lint.run/welcome/install/"; exit 1; }
 	@golangci-lint run ./...
 
 #run: @ Run the example
-run: deps testdata
+run: deps-go testdata
 	@go run ./...
 
 #testdata: @ Get test data
@@ -34,17 +37,17 @@ testdata:
 	fi
 
 #test: @ Run tests with coverage
-test: deps
+test: deps-go
 	@go test --cover -parallel=1 -v -coverprofile=coverage.out -v ./...
 	@go tool cover -func=coverage.out | sort -rnk3
 
 #update: @ Update dependency packages to latest versions
-update: deps
+update: deps-go
 	@go get -u ./...
 	@go mod tidy
 
 #ci: @ Run full local CI pipeline
-ci: deps build test
+ci: build test
 	@echo "Local CI pipeline passed."
 
 #release: @ Create and push a new tag
@@ -61,15 +64,15 @@ release:
 		echo "Done."'
 
 #bootstrap: @ Bootstrap Docker buildx multi-platform builder
-bootstrap:
+bootstrap: deps
 	@docker buildx create --use --platform=linux/arm64,linux/amd64,linux/arm/v7 --name multi-platform-builder
 
 #image-build: @ Build Docker image (amd64)
-image-build:
+image-build: deps
 	@docker buildx build --load --platform linux/amd64 -f Dockerfile -t anriykalashnykov/go-face:amd64 .
 
 #image-run: @ Run Docker image interactively (amd64)
-image-run:
+image-run: deps
 	@docker run --platform linux/amd64 --rm -it anriykalashnykov/go-face:amd64 /bin/bash
 
 #tag-delete: @ Delete a git tag locally and remotely
@@ -97,6 +100,6 @@ bootstrap-renovate:
 validate-renovate: bootstrap-renovate
 	@npx -p renovate -c 'renovate-config-validator'
 
-.PHONY: help deps build lint run testdata test update ci \
+.PHONY: help deps-go deps build lint run testdata test update ci \
 	release bootstrap image-build image-run tag-delete \
 	bootstrap-renovate validate-renovate
