@@ -1,4 +1,4 @@
-name: ci
+name: CI
 
 on:
   push:
@@ -15,9 +15,9 @@ permissions:
 
 jobs:
 
-  tests:
+  ci:
 
-    name: tests
+    name: ci
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/andriykalashnykov/dlib-docker:v20.0.0@sha256:199cece5aca1dc78da78ab22cd075e77b9df4dcd774631830a3bbe5f6f80aa8e
@@ -34,14 +34,20 @@ jobs:
           go-version-file: 'go.mod'
           cache: true
 
-      - name: Run tests
+      - name: Lint
+        run: make lint
+
+      - name: Test
         run: make test
+
+      - name: Build
+        run: make build
 
   release-docker-images:
 
     if: github.ref_type == 'tag'
     runs-on: ${{ matrix.runner }}
-    needs: [ tests ]
+    needs: [ ci ]
     permissions:
       contents: write
       packages: write

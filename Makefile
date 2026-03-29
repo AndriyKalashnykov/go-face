@@ -1,8 +1,13 @@
 .DEFAULT_GOAL := help
 
-projectname    ?= go-face
+APP_NAME       := go-face
 CURRENTTAG     := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "dev")
-NVM_VERSION    := 0.40.4
+
+# === Tool Versions (pinned) ===
+GOLANGCI_VERSION := 2.1.6
+HADOLINT_VERSION := 2.12.0
+ACT_VERSION      := 0.2.86
+NVM_VERSION      := 0.40.4
 
 #help: @ List available tasks
 help:
@@ -14,18 +19,25 @@ help:
 deps-go:
 	@command -v go >/dev/null 2>&1 || { echo "Error: Go required. See https://go.dev/doc/install"; exit 1; }
 
-#deps: @ Check required tools (Go + Docker)
+#deps: @ Check required tools (Go + Docker + golangci-lint)
 deps: deps-go
 	@command -v docker >/dev/null 2>&1 || { echo "Error: Docker required. See https://docs.docker.com/get-docker/"; exit 1; }
+	@command -v golangci-lint >/dev/null 2>&1 || { echo "Installing golangci-lint v$(GOLANGCI_VERSION)..."; \
+		go install github.com/golangci/golangci-lint/cmd/golangci-lint@v$(GOLANGCI_VERSION); }
+
+#clean: @ Remove build artifacts
+clean:
+	@rm -f coverage.out
+	@go clean ./...
 
 #build: @ Build the Go project
 build: deps-go
 	@go build -v ./...
 
-#lint: @ Run static analysis
-lint: deps-go
-	@command -v golangci-lint >/dev/null 2>&1 || { echo "Error: golangci-lint required. See https://golangci-lint.run/welcome/install/"; exit 1; }
+#lint: @ Run static analysis and Dockerfile linting
+lint: deps deps-hadolint
 	@golangci-lint run ./...
+	@hadolint Dockerfile
 
 #run: @ Run the example
 run: deps-go testdata
@@ -48,7 +60,7 @@ update: deps-go
 	@go mod tidy
 
 #ci: @ Run full local CI pipeline
-ci: build test
+ci: deps lint test build
 	@echo "Local CI pipeline passed."
 
 #release: @ Create and push a new tag
@@ -69,7 +81,7 @@ bootstrap: deps
 	@docker buildx create --use --platform=linux/arm64,linux/amd64,linux/arm/v7 --name multi-platform-builder
 
 #image-build: @ Build Docker image (amd64)
-image-build: deps
+image-build: build
 	@docker buildx build --load --platform linux/amd64 -f Dockerfile -t anriykalashnykov/go-face:amd64 .
 
 #image-run: @ Run Docker image interactively (amd64)
@@ -81,6 +93,25 @@ tag-delete:
 	@rm -f version.txt
 	@git push --delete origin v0.0.3
 	@git tag --delete v0.0.3
+
+#deps-hadolint: @ Install hadolint for Dockerfile linting
+deps-hadolint:
+	@command -v hadolint >/dev/null 2>&1 || { echo "Installing hadolint $(HADOLINT_VERSION)..."; \
+		curl -sSfL -o /tmp/hadolint https://github.com/hadolint/hadolint/releases/download/v$(HADOLINT_VERSION)/hadolint-Linux-x86_64 && \
+		install -m 755 /tmp/hadolint /usr/local/bin/hadolint && \
+		rm -f /tmp/hadolint; \
+	}
+
+#deps-act: @ Install act for local CI
+deps-act: deps
+	@command -v act >/dev/null 2>&1 || { echo "Installing act $(ACT_VERSION)..."; \
+		curl -sSfL https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash -s -- -b /usr/local/bin v$(ACT_VERSION); \
+	}
+
+#ci-run: @ Run GitHub Actions workflow locally using act
+ci-run: deps-act
+	@act push --container-architecture linux/amd64 \
+		--artifact-server-path /tmp/act-artifacts
 
 #renovate-bootstrap: @ Install nvm and npm for Renovate
 renovate-bootstrap:
@@ -96,6 +127,7 @@ renovate-bootstrap:
 renovate-validate: renovate-bootstrap
 	@npx --yes renovate --platform=local
 
-.PHONY: help deps-go deps build lint run testdata test update ci \
+.PHONY: help deps-go deps clean build lint run testdata test update ci \
 	release bootstrap image-build image-run tag-delete \
+	deps-hadolint deps-act ci-run \
 	renovate-bootstrap renovate-validate

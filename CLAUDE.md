@@ -13,7 +13,7 @@ Go library for face recognition using [dlib](http://dlib.net). Wraps dlib's face
 - Go (version from `go.mod`)
 - Docker (for container builds)
 - dlib (>= 19.10) and libjpeg development packages
-- golangci-lint (for linting)
+- golangci-lint (auto-installed by `make deps`)
 
 ### Ubuntu/Debian
 
@@ -26,9 +26,20 @@ sudo apt-get install libdlib-dev libblas-dev libatlas-base-dev liblapack-dev lib
 ```bash
 make build       # Build the Go project
 make test        # Run tests with coverage
-make lint        # Run static analysis
-make ci          # Full local CI pipeline (build + test)
+make lint        # Run static analysis and Dockerfile linting
+make ci          # Full local CI pipeline (lint, test, build)
+make ci-run      # Run GitHub Actions workflow locally via act
 ```
+
+## Key Variables
+
+| Variable | Value | Purpose |
+|----------|-------|---------|
+| `APP_NAME` | `go-face` | Project name |
+| `GOLANGCI_VERSION` | `2.1.6` | golangci-lint version |
+| `HADOLINT_VERSION` | `2.12.0` | hadolint version |
+| `ACT_VERSION` | `0.2.86` | act version |
+| `NVM_VERSION` | `0.40.4` | nvm version for Renovate |
 
 ## Project Structure
 
@@ -43,6 +54,7 @@ make ci          # Full local CI pipeline (build + test)
 ├── face_test.go         # Tests
 ├── example_test.go      # Example tests
 ├── Dockerfile           # Multi-arch Docker image build
+├── .hadolint.yaml       # Hadolint configuration for Dockerfile linting
 ├── testdata/            # Test models and images (cloned separately)
 └── .github/workflows/   # CI/CD pipelines
 ```
@@ -57,7 +69,7 @@ make ci          # Full local CI pipeline (build + test)
 
 | Job | Runs on | Description |
 |-----|---------|-------------|
-| `tests` | ubuntu-latest (dlib container) | Checkout, setup Go, `make test` |
+| `ci` | ubuntu-latest (dlib container) | Checkout, setup Go, `make lint`, `make test`, `make build` |
 | `release-docker-images` | ubuntu-latest (tag-only) | Build and push multi-arch Docker images to GHCR |
 
 The `release-docker-images` job has elevated permissions (`contents: write`, `packages: write`) at job level only.
@@ -73,13 +85,18 @@ The `release-docker-images` job has elevated permissions (`contents: write`, `pa
 | Target | Description |
 |--------|-------------|
 | `make help` | List available tasks |
+| `make deps` | Check required tools (Go + Docker + golangci-lint) |
+| `make clean` | Remove build artifacts |
 | `make build` | Build the Go project |
+| `make lint` | Run static analysis and Dockerfile linting |
 | `make test` | Run tests with coverage |
-| `make lint` | Run static analysis |
-| `make ci` | Full local CI pipeline |
+| `make ci` | Full local CI pipeline (lint, test, build) |
+| `make ci-run` | Run GitHub Actions workflow locally using act |
 | `make release` | Create and push a new tag |
 | `make image-build` | Build Docker image (amd64) |
-| `make validate-renovate` | Validate renovate configuration |
+| `make image-run` | Run Docker image interactively (amd64) |
+| `make update` | Update dependency packages to latest versions |
+| `make renovate-validate` | Validate Renovate configuration |
 
 ## Skills
 
