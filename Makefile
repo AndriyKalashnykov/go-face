@@ -18,12 +18,12 @@ help:
 #deps-go: @ Check Go is installed
 deps-go:
 	@command -v go >/dev/null 2>&1 || { echo "Error: Go required. See https://go.dev/doc/install"; exit 1; }
-
-#deps: @ Check required tools (Go + Docker + golangci-lint)
-deps: deps-go
-	@command -v docker >/dev/null 2>&1 || { echo "Error: Docker required. See https://docs.docker.com/get-docker/"; exit 1; }
 	@command -v golangci-lint >/dev/null 2>&1 || { echo "Installing golangci-lint v$(GOLANGCI_VERSION)..."; \
 		go install github.com/golangci/golangci-lint/cmd/golangci-lint@v$(GOLANGCI_VERSION); }
+
+#deps: @ Check required tools (Go + Docker)
+deps: deps-go
+	@command -v docker >/dev/null 2>&1 || { echo "Error: Docker required. See https://docs.docker.com/get-docker/"; exit 1; }
 
 #clean: @ Remove build artifacts
 clean:
@@ -35,7 +35,7 @@ build: deps-go
 	@go build -v ./...
 
 #lint: @ Run static analysis and Dockerfile linting
-lint: deps deps-hadolint
+lint: deps-go deps-hadolint
 	@golangci-lint run ./...
 	@hadolint Dockerfile
 
