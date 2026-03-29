@@ -8,7 +8,7 @@ package face
 import "C"
 import (
 	"image"
-	"io/ioutil"
+	"io"
 	"math"
 	"os"
 	"unsafe"
@@ -158,8 +158,8 @@ func (rec *Recognizer) recognizeFile(type_ int, imgPath string, maxFaces int) (f
 	if err != nil {
 		return
 	}
-	defer fd.Close()
-	imgData, err := ioutil.ReadAll(fd)
+	defer func() { _ = fd.Close() }()
+	imgData, err := io.ReadAll(fd)
 	if err != nil {
 		return
 	}

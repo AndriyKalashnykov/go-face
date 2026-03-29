@@ -4,7 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -63,7 +63,7 @@ func getTPath(fname string) string {
 }
 
 func getIdolData() (idata *IdolData, err error) {
-	data, err := ioutil.ReadFile(filepath.Join("testdata", "idols.json"))
+	data, err := os.ReadFile(filepath.Join("testdata", "idols.json"))
 	if err != nil {
 		return
 	}
@@ -73,7 +73,7 @@ func getIdolData() (idata *IdolData, err error) {
 		return
 	}
 	idata.byID = make(map[string]*Idol)
-	for i, _ := range idata.Idols {
+	for i := range idata.Idols {
 		idol := &idata.Idols[i]
 		idata.byID[idol.ID] = idol
 	}
@@ -96,7 +96,7 @@ func getTrainData(idata *IdolData) (tdata *TrainData) {
 	var catID int32
 	var prevIdolID string
 	catID = -1
-	for i, _ := range idata.Faces {
+	for i := range idata.Faces {
 		iface := &idata.Faces[i]
 		descriptor := str2descr(iface.Descriptor)
 		samples = append(samples, descriptor)
