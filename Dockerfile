@@ -7,14 +7,12 @@ ARG DEBIAN_FRONTEND=noninteractive
 RUN DEBIAN_FRONTEND=${DEBIAN_FRONTEND} apt-get update
 RUN apt-get install -y ca-certificates
 
-ARG GO_VER=1.25.7
 ARG TARGETOS
 ARG TARGETARCH
 
 # https://hub.docker.com/_/golang/
-# Install Go
+# Install Go (version extracted from go.mod)
 ADD "https://www.random.org/cgi-bin/randbyte?nbytes=10&format=h" skipcache
-# Extract Go version from go.mod file instead of hardcoding it
 COPY go.mod /tmp/
 RUN GO_VER=$(awk '/^go [0-9]+\.[0-9]+/ {print substr($2, 1)}' /tmp/go.mod) && \
     ARCH=$(uname -m | sed -e 's/x86_64/amd64/' -e 's/\(arm\)\(64\)\?\(v7l\)\?.*/\1\2\3/' -e 's/aarch64$/arm64/' -e 's/armv7l$/armv6l/') && \

@@ -38,7 +38,7 @@ make ci-run      # Run GitHub Actions workflow locally via act
 | `APP_NAME` | `go-face` | Project name |
 | `GOLANGCI_VERSION` | `2.11.4` | golangci-lint version |
 | `HADOLINT_VERSION` | `2.12.0` | hadolint version |
-| `ACT_VERSION` | `0.2.86` | act version |
+| `ACT_VERSION` | `0.2.87` | act version |
 | `NVM_VERSION` | `0.40.4` | nvm version for Renovate |
 
 ## Project Structure

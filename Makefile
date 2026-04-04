@@ -54,7 +54,7 @@ testdata:
 
 #test: @ Run tests with coverage
 test: deps-go
-	@go test --cover -parallel=1 -v -coverprofile=coverage.out -v ./...
+	@go test --cover -parallel=1 -v -coverprofile=coverage.out ./...
 	@go tool cover -func=coverage.out | sort -rnk3
 
 #update: @ Update dependency packages to latest versions

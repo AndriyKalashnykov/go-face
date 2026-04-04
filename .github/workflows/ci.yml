@@ -66,11 +66,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Get Go version from go.mod
-        run: |
-          GO_VERSION=$(grep '^go ' go.mod | awk '{print $2}')
-          echo "GO_VERSION=$GO_VERSION" >> $GITHUB_ENV
-
       - name: Convert owner to lower case
         shell: bash
         run: |
@@ -121,7 +116,6 @@ jobs:
           platforms: ${{ matrix.platforms }}
           build-args: |
             BUILDER_IMAGE=ghcr.io/andriykalashnykov/dlib-docker:v19.24.4
-            GO_VER=${{ env.GO_VERSION }}
           push: true
           provenance: false
           tags: ${{ steps.meta.outputs.tags }}
