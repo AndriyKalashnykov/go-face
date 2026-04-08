@@ -29,7 +29,8 @@ make run       # run the example
 | [Go](https://go.dev/dl/) | See `go.mod` | Go compiler and runtime |
 | [Docker](https://www.docker.com/) | latest | Container image builds |
 | [dlib](http://dlib.net/compile.html) | >= 19.10 | Face detection/recognition C++ library |
-| [golangci-lint](https://golangci-lint.run/) | 2.11.4 | Static analysis (auto-installed by `make deps`) |
+| [golangci-lint](https://golangci-lint.run/) | 2.11.4 | Static analysis (auto-installed by `make deps-lint`) |
+| [hadolint](https://github.com/hadolint/hadolint) | 2.14.0 | Dockerfile linting (auto-installed by `make deps-hadolint`) |
 | [act](https://github.com/nektos/act) | 0.2.87 | Run GitHub Actions locally (optional, auto-installed by `make deps-act`) |
 
 Install all required dependencies:
@@ -92,6 +93,7 @@ Run `make help` to see all available targets.
 | `make run` | Run the example |
 | `make testdata` | Get test data |
 | `make clean` | Remove build artifacts |
+| `make format` | Format Go code |
 
 ### Code Quality
 
@@ -158,7 +160,7 @@ To install go-face in your $GOPATH:
 go get github.com/AndriyKalashnykov/go-face
 ```
 
-For further details see [GoDoc documentation](https://godoc.org/github.com/AndriyKalashnykov/go-face).
+For further details see [pkg.go.dev documentation](https://pkg.go.dev/github.com/AndriyKalashnykov/go-face).
 
 ## Example
 

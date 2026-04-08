@@ -5,7 +5,7 @@ CURRENTTAG     := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "de
 
 # === Tool Versions (pinned) ===
 GOLANGCI_VERSION := 2.11.4
-HADOLINT_VERSION := 2.12.0
+HADOLINT_VERSION := 2.14.0
 ACT_VERSION      := 0.2.87
 NVM_VERSION      := 0.40.4
 
@@ -32,6 +32,10 @@ deps: deps-go
 clean:
 	@rm -f coverage.out
 	@go clean ./...
+
+#format: @ Format Go code
+format: deps-go
+	@gofmt -w .
 
 #build: @ Build the Go project
 build: deps-go
@@ -72,7 +76,7 @@ release:
 		echo "$$newtag" | grep -qE "^v[0-9]+\.[0-9]+\.[0-9]+$$" || { echo "Error: Tag must match vN.N.N"; exit 1; } && \
 		echo -n "Create and push $$newtag? [y/N] " && read ans && [ "$${ans:-N}" = y ] && \
 		echo $$newtag > ./version.txt && \
-		git add -A && \
+		git add version.txt && \
 		git commit -a -s -m "Cut $$newtag release" && \
 		git tag $$newtag && \
 		git push origin $$newtag && \
@@ -98,17 +102,18 @@ tag-delete:
 	@git tag --delete v0.0.3
 
 #deps-hadolint: @ Install hadolint for Dockerfile linting
-deps-hadolint:
+deps-hadolint: deps-go
 	@command -v hadolint >/dev/null 2>&1 || { echo "Installing hadolint $(HADOLINT_VERSION)..."; \
-		curl -sSfL -o /tmp/hadolint https://github.com/hadolint/hadolint/releases/download/v$(HADOLINT_VERSION)/hadolint-Linux-x86_64 && \
-		install -m 755 /tmp/hadolint /usr/local/bin/hadolint && \
-		rm -f /tmp/hadolint; \
+		INSTALL_DIR=$$(go env GOPATH)/bin && \
+		mkdir -p "$$INSTALL_DIR" && \
+		curl -sSfL -o "$$INSTALL_DIR/hadolint" https://github.com/hadolint/hadolint/releases/download/v$(HADOLINT_VERSION)/hadolint-Linux-x86_64 && \
+		chmod 755 "$$INSTALL_DIR/hadolint"; \
 	}
 
 #deps-act: @ Install act for local CI
 deps-act: deps
 	@command -v act >/dev/null 2>&1 || { echo "Installing act $(ACT_VERSION)..."; \
-		curl -sSfL https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash -s -- -b /usr/local/bin v$(ACT_VERSION); \
+		curl -sSfL https://raw.githubusercontent.com/nektos/act/master/install.sh | bash -s -- -b $$(go env GOPATH)/bin v$(ACT_VERSION); \
 	}
 
 #ci-run: @ Run GitHub Actions workflow locally using act
@@ -130,7 +135,7 @@ renovate-bootstrap:
 renovate-validate: renovate-bootstrap
 	@npx --yes renovate --platform=local
 
-.PHONY: help deps-go deps-lint deps clean build lint run testdata test update ci \
+.PHONY: help deps-go deps-lint deps clean format build lint run testdata test update ci \
 	release bootstrap image-build image-run tag-delete \
 	deps-hadolint deps-act ci-run \
 	renovate-bootstrap renovate-validate

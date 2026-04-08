@@ -37,7 +37,7 @@ make ci-run      # Run GitHub Actions workflow locally via act
 |----------|-------|---------|
 | `APP_NAME` | `go-face` | Project name |
 | `GOLANGCI_VERSION` | `2.11.4` | golangci-lint version |
-| `HADOLINT_VERSION` | `2.12.0` | hadolint version |
+| `HADOLINT_VERSION` | `2.14.0` | hadolint version |
 | `ACT_VERSION` | `0.2.87` | act version |
 | `NVM_VERSION` | `0.40.4` | nvm version for Renovate |
 
@@ -87,17 +87,25 @@ The `release-docker-images` job has elevated permissions (`contents: write`, `pa
 | `make help` | List available tasks |
 | `make deps-go` | Check Go is installed |
 | `make deps-lint` | Install golangci-lint for static analysis |
+| `make deps-hadolint` | Install hadolint for Dockerfile linting |
+| `make deps-act` | Install act for local CI |
 | `make deps` | Check required tools (Go + Docker) |
 | `make clean` | Remove build artifacts |
+| `make format` | Format Go code |
 | `make build` | Build the Go project |
 | `make lint` | Run static analysis and Dockerfile linting |
+| `make run` | Run the example |
+| `make testdata` | Get test data |
 | `make test` | Run tests with coverage |
+| `make update` | Update dependency packages to latest versions |
 | `make ci` | Full local CI pipeline (lint, test, build) |
 | `make ci-run` | Run GitHub Actions workflow locally using act |
 | `make release` | Create and push a new tag |
+| `make tag-delete` | Delete a git tag locally and remotely |
+| `make bootstrap` | Bootstrap Docker buildx multi-platform builder |
 | `make image-build` | Build Docker image (amd64) |
 | `make image-run` | Run Docker image interactively (amd64) |
-| `make update` | Update dependency packages to latest versions |
+| `make renovate-bootstrap` | Install nvm and npm for Renovate |
 | `make renovate-validate` | Validate Renovate configuration |
 
 ## Skills
