@@ -178,6 +178,10 @@ jobs:
           severity: 'CRITICAL,HIGH'
           exit-code: '1'
           ignore-unfixed: true
+          # Skip the Go source tree that ships inside the image — it contains
+          # Dockerfiles used as FIPS/boringcrypto test fixtures (DS-0002) that
+          # are not ours to fix and do not affect the runtime.
+          skip-dirs: 'usr/local/go/src'
 
       # ----------------------------------------------------------------
       # GATE 3: Smoke test — this image is a dev/testdata sandbox with
