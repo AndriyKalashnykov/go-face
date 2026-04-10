@@ -1,4 +1,4 @@
-ARG BUILDER_IMAGE="ghcr.io/andriykalashnykov/dlib-docker:v19.24.4@sha256:91ea2d6b8b86c52069db6a554442862897fb53ba7365f691500dc0f06fe4578f"
+ARG BUILDER_IMAGE="ghcr.io/andriykalashnykov/dlib-docker:19.24.9@sha256:9cfeadcd58bb474783eec3471b19bcdde1c160b91b06e06df15ef6b5fc4fd95d"
 
 FROM ${BUILDER_IMAGE} AS builder
 

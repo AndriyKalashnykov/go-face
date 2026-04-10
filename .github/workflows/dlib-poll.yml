@@ -1,0 +1,117 @@
+name: Poll dlib-docker releases
+
+on:
+  schedule:
+    # Daily at 06:00 UTC
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: dlib-poll
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Discover new dlib-docker majors
+        id: discover
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # Fetch every version of the dlib-docker package with its digest
+          # and tag list. The `name` field on a version is the manifest digest
+          # (e.g. sha256:...); `metadata.container.tags[]` is the list of tags
+          # pointing at that manifest.
+          gh api --paginate \
+            'users/andriykalashnykov/packages/container/dlib-docker/versions' \
+            --jq '.[] | {digest: .name, tags: (.metadata.container.tags // [])}' \
+            > /tmp/versions.jsonl
+
+          # Flatten into "tag digest" lines, keeping only clean semver tags.
+          jq -r 'select(.tags | length > 0) | .digest as $d | .tags[] | select(test("^v[0-9]+\\.[0-9]+\\.[0-9]+$")) | "\(.)\t\($d)"' \
+            /tmp/versions.jsonl > /tmp/tags.tsv
+
+          if [ ! -s /tmp/tags.tsv ]; then
+            echo "No semver tags found on dlib-docker; nothing to do."
+            echo "added=false" >>"$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Existing majors in .dlib-versions.json (e.g. 19 20).
+          jq -r '.versions[].dlib_docker_tag' .dlib-versions.json \
+            | sed -n 's/^v\([0-9]\+\)\..*/\1/p' \
+            | sort -u > /tmp/known-majors.txt
+
+          # For every observed major, pick the highest semver tag.
+          # Output format: "MAJOR TAG DIGEST"
+          awk -F '\t' '{ split($1, v, "."); sub("v", "", v[1]); print v[1]"\t"$1"\t"$2 }' /tmp/tags.tsv \
+            | sort -t $'\t' -k1,1n -k2,2V \
+            | awk -F '\t' '{ best[$1]=$0 } END { for (k in best) print best[k] }' \
+            > /tmp/best-per-major.tsv
+
+          added=false
+          while IFS=$'\t' read -r major tag digest; do
+            if grep -qx "$major" /tmp/known-majors.txt; then
+              continue
+            fi
+            echo "New dlib-docker major detected: $major (tag=$tag digest=$digest)"
+            tmp=$(mktemp)
+            jq \
+              --arg image_tag "dlib$major" \
+              --arg tag "$tag" \
+              --arg digest "$digest" \
+              '.versions += [{
+                image_tag: $image_tag,
+                dlib_docker_tag: $tag,
+                dlib_docker_digest: $digest,
+                status: "active"
+              }]' \
+              .dlib-versions.json > "$tmp"
+            mv "$tmp" .dlib-versions.json
+            added=true
+          done < /tmp/best-per-major.tsv
+
+          if [ "$added" = true ]; then
+            echo "added=true" >>"$GITHUB_OUTPUT"
+          else
+            echo "No new dlib-docker majors to add."
+            echo "added=false" >>"$GITHUB_OUTPUT"
+          fi
+
+      - name: Open PR
+        if: steps.discover.outputs.added == 'true'
+        id: cpr
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: auto/dlib-lineage
+          delete-branch: true
+          commit-message: 'chore(all): add new dlib-docker lineage'
+          title: 'chore(all): add new dlib-docker lineage'
+          body: |
+            New dlib-docker major version detected by `dlib-poll.yml`.
+            This PR adds an entry to `.dlib-versions.json` so the next
+            go-face release builds against the new lineage.
+
+            Once merged, `auto-release.yml` will cut the next patch
+            release automatically.
+          labels: |
+            dependencies
+            automerge
+
+      - name: Enable auto-merge
+        if: steps.discover.outputs.added == 'true' && steps.cpr.outputs.pull-request-number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ steps.cpr.outputs.pull-request-number }}
+        run: gh pr merge --auto --squash "$PR"

@@ -1,0 +1,11 @@
+{
+  "$schema": "./.dlib-versions.schema.json",
+  "versions": [
+    {
+      "image_tag": "dlib19",
+      "dlib_docker_tag": "19.24.9",
+      "dlib_docker_digest": "sha256:9cfeadcd58bb474783eec3471b19bcdde1c160b91b06e06df15ef6b5fc4fd95d",
+      "status": "active"
+    }
+  ]
+}

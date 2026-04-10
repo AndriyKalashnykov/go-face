@@ -35,6 +35,16 @@
       "matchStrings": [
         "# renovate: datasource=(?<datasource>[^\\s]+) depName=(?<depName>[^\\s]+)( versioning=(?<versioning>[^\\s]+))?\\n[A-Z_]+\\s*:=\\s*(?<currentValue>[^\\s]+)"
       ]
+    },
+    {
+      "customType": "regex",
+      "description": "Track dlib-docker tag and digest pairs in .dlib-versions.json",
+      "managerFilePatterns": ["/^\\.dlib-versions\\.json$/"],
+      "matchStrings": [
+        "\"dlib_docker_tag\":\\s*\"(?<currentValue>[^\"]+)\",\\s*\"dlib_docker_digest\":\\s*\"(?<currentDigest>sha256:[a-f0-9]+)\""
+      ],
+      "datasourceTemplate": "docker",
+      "depNameTemplate": "ghcr.io/andriykalashnykov/dlib-docker"
     }
   ],
   "vulnerabilityAlerts": {

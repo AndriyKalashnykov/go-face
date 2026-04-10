@@ -39,7 +39,7 @@ make ci-run       # Run GitHub Actions workflow locally via act
 | `GO_VERSION` | derived from `go.mod` | Go toolchain version |
 | `GOLANGCI_VERSION` | `2.11.4` | golangci-lint version |
 | `HADOLINT_VERSION` | `2.14.0` | hadolint version |
-| `GOSEC_VERSION` | `2.22.12` | gosec version |
+| `GOSEC_VERSION` | `2.25.0` | gosec version |
 | `GOVULNCHECK_VERSION` | `1.1.4` | govulncheck version |
 | `ACT_VERSION` | `0.2.87` | act version |
 | `NVM_VERSION` | `0.40.4` | nvm version (bootstraps Node for Renovate) |
@@ -47,6 +47,12 @@ make ci-run       # Run GitHub Actions workflow locally via act
 
 All tool versions have `# renovate:` inline comments; Renovate tracks them via
 the generic `customManagers` regex in `renovate.json`.
+
+The **source of truth for supported dlib-docker lineages** is
+`.dlib-versions.json`. Each entry pins a `dlib_docker_tag` + `dlib_docker_digest`
+pair; Renovate tracks those pairs via a second `customManagers` regex and
+`dlib-poll.yml` discovers new major versions. The `image_tag` (e.g. `dlib19`)
+becomes the GHCR sub-package suffix: `ghcr.io/andriykalashnykov/go-face/dlib19`.
 
 ## Project Structure
 
@@ -60,10 +66,12 @@ the generic `customManagers` regex in `renovate.json`.
 ├── doc.go               # Package documentation
 ├── face_test.go         # Tests
 ├── example_test.go      # Example tests
-├── Dockerfile           # Multi-arch Docker image build
+├── Dockerfile           # Multi-arch Docker image build (ARG BUILDER_IMAGE)
+├── .dockerignore        # Build context exclusions
+├── .dlib-versions.json  # Source of truth for supported dlib-docker lineages
 ├── .hadolint.yaml       # Hadolint configuration for Dockerfile linting
 ├── .nvmrc               # Node version (for Renovate local runs)
-├── testdata/            # Test models and images (cloned separately)
+├── testdata/            # Test models and images (committed)
 └── .github/workflows/   # CI/CD pipelines
 ```
 
@@ -75,14 +83,16 @@ the generic `customManagers` regex in `renovate.json`.
 - **Concurrency**: cancel-in-progress enabled
 - **Permissions**: `contents: read` at workflow level (minimal)
 - **Paths ignored**: `**/*.md`, `docs/**`, `.gitignore`, `.claude/**`, `.idea/**`, `LICENSE`, `version.txt`
+- **Matrix**: every lineage in `.dlib-versions.json` with `status: active` runs in parallel through `static-check`, `build`, `test`, and `docker` (`fail-fast: false`).
 
 | Job | Runs on | Description |
 |-----|---------|-------------|
-| `static-check` | ubuntu-latest (dlib container) | `make static-check` (format-check, lint, vulncheck, sec) |
-| `build` | ubuntu-latest (dlib container) | `make build`, needs `static-check` |
-| `test` | ubuntu-latest (dlib container) | `make test`, needs `static-check` |
-| `docker` | ubuntu-latest (every push) | Hardened image pipeline: build-for-scan, Trivy image scan, smoke test, multi-arch build (push tag-gated), cosign keyless signing (tag-gated) |
-| `ci-pass` | ubuntu-latest (`if: always()`) | Aggregator gate — fails if any required job failed or was cancelled |
+| `setup` | ubuntu-latest | Reads `.dlib-versions.json`, emits the matrix for downstream jobs |
+| `static-check` | ubuntu-latest (dlib container, one per lineage) | `make static-check` (format-check, lint, vulncheck, sec) |
+| `build` | ubuntu-latest (dlib container, one per lineage) | `make build`, needs `static-check` |
+| `test` | ubuntu-latest (dlib container, one per lineage) | `make test`, needs `static-check` |
+| `docker` | ubuntu-latest (bare, one per lineage) | Hardened image pipeline. Publishes to `ghcr.io/.../go-face/${{ matrix.image_tag }}` on tag push. |
+| `ci-pass` | ubuntu-latest (`if: always()`) | Aggregator gate — fails if any matrix expansion of any job failed or was cancelled |
 
 The `docker` job runs on **every push**, not just tags. Login, push, and
 cosign signing are gated at step-level via `if: startsWith(github.ref, 'refs/tags/')`
@@ -92,11 +102,35 @@ that introduced them, not on release day. Permissions: `contents: read` +
 GHCR auth uses the built-in `GITHUB_TOKEN`. Buildkit in-manifest attestations
 are disabled (`provenance: false`, `sbom: false`) so the GHCR "OS / Arch" tab
 renders — cosign keyless signing provides supply-chain verification instead.
+The `BUILDER_IMAGE` build-arg and the base-image OCI labels come from the
+matrix entry, so each published image records exactly which `dlib-docker`
+tag+digest it was built against.
 
-Pre-push gates: (1) build single-arch for scan, (2) Trivy image scan
-`CRITICAL`/`HIGH` blocking, (3) smoke test (Go toolchain + source + testdata
-invariants), (4) multi-arch build with conditional push, (5) cosign keyless
-signing tag-only. See README "Pre-push image hardening" for details.
+Pre-push gates (per matrix entry): (1) build single-arch for scan, (2) Trivy
+image scan `CRITICAL`/`HIGH` blocking, (3) smoke test (Go toolchain + source
++ testdata invariants), (4) multi-arch build with conditional push, (5)
+cosign keyless signing tag-only. See README "Pre-push image hardening" for
+details.
+
+### dlib-poll.yml
+
+- **Triggers**: daily cron (`0 6 * * *`), `workflow_dispatch`
+- **Permissions**: `contents: write`, `pull-requests: write`
+- Queries `ghcr.io/andriykalashnykov/dlib-docker` for published tags, groups
+  them by major, and opens an auto-merging PR that adds any new majors to
+  `.dlib-versions.json`. New patches within an already-tracked major are
+  handled by Renovate, not this poller.
+
+### auto-release.yml
+
+- **Triggers**: `push` to `main` touching `.dlib-versions.json`
+- **Permissions**: `contents: read` at job level; the actual push uses a PAT
+- Bumps `version.txt` patch (e.g., `v0.1.0` → `v0.1.1`), commits as
+  `Cut vX.Y.Z release`, creates the tag, pushes main + tag.
+  Uses the `RELEASE_PAT` secret because `GITHUB_TOKEN`-authored tag pushes
+  deliberately do not trigger downstream workflows. Anti-recursion: skips
+  commits by `go-face-release-bot` or `github-actions[bot]`, and skips
+  commits whose message starts with `Cut v`.
 
 ### cleanup-runs.yml
 
