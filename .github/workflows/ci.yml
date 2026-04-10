@@ -4,7 +4,24 @@ on:
   push:
     branches: [main]
     tags: ['v*']
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - '.gitignore'
+      - '.claude/**'
+      - '.idea/**'
+      - 'LICENSE'
+      - 'version.txt'
   pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - '.gitignore'
+      - '.claude/**'
+      - '.idea/**'
+      - 'LICENSE'
+      - 'version.txt'
+  workflow_call:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -15,111 +32,229 @@ permissions:
 
 jobs:
 
-  ci:
-
-    name: ci
+  static-check:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     container:
       image: ghcr.io/andriykalashnykov/dlib-docker:v20.0.0@sha256:199cece5aca1dc78da78ab22cd075e77b9df4dcd774631830a3bbe5f6f80aa8e
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
 
       - name: Update CA certificates
-        run: apt-get update && apt-get install -y --no-install-recommends ca-certificates
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates
+          rm -rf /var/lib/apt/lists/*
 
-      - name: Install Go
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
           go-version-file: 'go.mod'
           cache: true
 
-      - name: Lint
-        run: make lint
+      - name: Static check
+        run: make static-check
 
-      - name: Test
-        run: make test
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [static-check]
+    container:
+      image: ghcr.io/andriykalashnykov/dlib-docker:v20.0.0@sha256:199cece5aca1dc78da78ab22cd075e77b9df4dcd774631830a3bbe5f6f80aa8e
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+
+      - name: Update CA certificates
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates
+          rm -rf /var/lib/apt/lists/*
+
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
+        with:
+          go-version-file: 'go.mod'
+          cache: true
 
       - name: Build
         run: make build
 
-  release-docker-images:
-
-    if: github.ref_type == 'tag'
-    runs-on: ${{ matrix.runner }}
-    needs: [ ci ]
-    permissions:
-      contents: write
-      packages: write
-    strategy:
-      matrix:
-        include:
-          - runner: ubuntu-latest
-            platforms: linux/arm/v7,linux/amd64,linux/arm64
-
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [static-check]
+    container:
+      image: ghcr.io/andriykalashnykov/dlib-docker:v20.0.0@sha256:199cece5aca1dc78da78ab22cd075e77b9df4dcd774631830a3bbe5f6f80aa8e
     steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+
+      - name: Update CA certificates
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates
+          rm -rf /var/lib/apt/lists/*
+
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Test
+        run: make test
+
+  docker:
+    # Runs on every push. Step-level `if:` gates login/push/cosign to tag pushes,
+    # so multi-arch build regressions (arm64 cross-compile) and cosign-installer
+    # breakage are caught on the commit that introduced them, not on release day.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [static-check, build, test]
+    permissions:
+      contents: read
+      packages: write      # exercised only by the tag-gated push step
+      id-token: write      # exercised only by the tag-gated cosign sign step
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
 
       - name: Convert owner to lower case
         shell: bash
-        run: |
-          echo "OWNER_LC=$(echo ${OWNER} | tr '[:upper:]' '[:lower:]')" >>${GITHUB_ENV}
         env:
           OWNER: '${{ github.repository_owner }}'
+        run: |
+          echo "OWNER_LC=$(echo "${OWNER}" | tr '[:upper:]' '[:lower:]')" >>"${GITHUB_ENV}"
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4
+      - uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4
+      - uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4
 
-      - name: Login to Docker image repository
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GH_ACCESS_TOKEN }}
-
-      - name: Build Docker meta
+      - name: Docker metadata
         id: meta
         uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf # v6
         with:
           images: ghcr.io/${{ env.OWNER_LC }}/go-face
           flavor: |
-            latest=true
+            latest=${{ startsWith(github.ref, 'refs/tags/') }}
           tags: |
-            type=semver,pattern=v{{version}}
-            type=semver,pattern=v{{major}}.{{minor}}
-            type=semver,pattern=v{{major}}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
           labels: |
             org.opencontainers.image.vendor=Andriy Kalashnykov - andriykalashnykov@gmail.com
             org.opencontainers.image.title=Face recognition in Go with Dlib
             org.opencontainers.image.description=Face recognition in Go with Dlib
             org.opencontainers.image.licenses=CC0
-            org.opencontainers.image.version=${{  github.ref_name }}
+            org.opencontainers.image.version=${{ github.ref_name }}
             io.artifacthub.package.readme-url=https://raw.githubusercontent.com/AndriyKalashnykov/go-face/main/README.md
-            io.artifacthub.package.maintainers=[{\"name\":\"Andriy Kalashnykov\",\"email\":\"andriykalashnykov@gmail.com\"}]
             io.artifacthub.package.license=CC0
 
-      - name: Build and push Docker image
-        id: docker_build
+      # ----------------------------------------------------------------
+      # GATE 1: single-arch build into local daemon for scan + smoke test
+      # ----------------------------------------------------------------
+      - name: Build image for scan
         uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7
         with:
           context: .
           file: ./Dockerfile
-          platforms: ${{ matrix.platforms }}
-          build-args: |
-            BUILDER_IMAGE=ghcr.io/andriykalashnykov/dlib-docker:v19.24.4
-          push: true
+          platforms: linux/amd64
+          load: true
+          tags: go-face:scan
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # ----------------------------------------------------------------
+      # GATE 2: Trivy image scan — CRITICAL/HIGH blocking
+      # ----------------------------------------------------------------
+      - name: Trivy image scan
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        with:
+          image-ref: 'go-face:scan'
+          scanners: 'vuln,secret,misconfig'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+          ignore-unfixed: true
+
+      # ----------------------------------------------------------------
+      # GATE 3: Smoke test — this image is a dev/testdata sandbox with
+      # `CMD tail -f /dev/null`, so the smoke test verifies that the Go
+      # toolchain, source files, and testdata baked into the image are
+      # actually present and runnable.
+      # ----------------------------------------------------------------
+      - name: Smoke test
+        run: |
+          set -euo pipefail
+          echo "→ smoke: Go toolchain runs"
+          docker run --rm go-face:scan /usr/local/go/bin/go version
+          echo "→ smoke: source files and testdata present"
+          docker run --rm go-face:scan bash -c 'test -f /app/face.go && test -f /app/facerec.cc && test -d /app/testdata'
+          echo "PASS: smoke test"
+
+      # ----------------------------------------------------------------
+      # Multi-arch build. Always runs (catches arm64 cross-compile
+      # regressions on the commit that introduced them). Push is tag-gated
+      # via the `push:` input, so non-tag pushes validate without publishing.
+      # ----------------------------------------------------------------
+      - name: Log in to GHCR
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        id: push
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: ${{ startsWith(github.ref, 'refs/tags/') }}
           provenance: false
+          sbom: false
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # ----------------------------------------------------------------
+      # GATE 5: cosign keyless OIDC signing — tag-only
+      # ----------------------------------------------------------------
+      - name: Install cosign
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: sigstore/cosign-installer@cad07c2e89fa2edd6e2d7bab4c1aa38e53f76003 # v4.1.1
+
+      - name: Sign image with cosign
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          set -euo pipefail
+          while IFS= read -r tag; do
+            [ -z "$tag" ] && continue
+            echo "→ cosign sign ${tag}@${DIGEST}"
+            cosign sign --yes "${tag}@${DIGEST}"
+          done <<< "${TAGS}"
+
+  ci-pass:
+    if: always()
+    runs-on: ubuntu-latest
+    needs: [static-check, build, test, docker]
+    steps:
+      - name: Verify all required jobs passed
+        run: |
+          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
+            echo "One or more required jobs failed."
+            exit 1
+          fi
+          if [[ "${{ contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            echo "One or more required jobs were cancelled."
+            exit 1
+          fi
+          echo "All required jobs passed."

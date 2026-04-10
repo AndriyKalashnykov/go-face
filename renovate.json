@@ -4,6 +4,12 @@
     "config:best-practices",
     ":semanticCommitType(chore)"
   ],
+  "enabledManagers": [
+    "gomod",
+    "github-actions",
+    "dockerfile",
+    "custom.regex"
+  ],
   "postUpdateOptions": [
     "gomodTidy"
   ],
@@ -21,6 +27,16 @@
   "automergeStrategy": "squash",
   "ignoreTests": false,
   "rebaseWhen": "behind-base-branch",
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Update Makefile tool versions via inline renovate comments",
+      "managerFilePatterns": ["/^Makefile$/"],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>[^\\s]+) depName=(?<depName>[^\\s]+)( versioning=(?<versioning>[^\\s]+))?\\n[A-Z_]+\\s*:=\\s*(?<currentValue>[^\\s]+)"
+      ]
+    }
+  ],
   "vulnerabilityAlerts": {
     "labels": [
       "security"

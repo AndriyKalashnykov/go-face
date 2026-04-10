@@ -11,29 +11,53 @@ popular machine learning toolkit. Read
 article for some background details if you're new to
 [FaceNet](https://arxiv.org/abs/1503.03832) concept.
 
+| Component | Technology |
+|-----------|------------|
+| Language | Go 1.26.2 |
+| Native bindings | C++ via CGo |
+| Recognition engine | [dlib](http://dlib.net) ≥ 19.10 |
+| Image decoding | libjpeg (turbo) |
+| Testing | `go test` (race, coverage) |
+| Containers | Docker buildx (multi-arch) |
+| CI/CD | GitHub Actions |
+| Static analysis | golangci-lint 2.11.4, hadolint 2.14.0 |
+| Security | govulncheck 1.1.4, gosec 2.22.12 |
+| Dependency updates | Renovate |
+
 ## Quick Start
 
 ```bash
-make deps      # check required tools (Go, Docker, golangci-lint)
-make testdata  # download test models and images
-make build     # build the project
-make test      # run tests with coverage
-make run       # run the example
+# Consume the library
+go get github.com/AndriyKalashnykov/go-face
+
+# Develop locally
+make deps         # check Go is installed
+make testdata     # clone dlib models + test images
+make static-check # format + lint + vulncheck + gosec
+make test         # run tests with coverage
 ```
+
+> **Note:** go-face wraps dlib via CGo. Install dlib and libjpeg natively (see
+> [dlib Installation](#dlib-installation)) before running `make test`, or run
+> tests inside the pre-built `ghcr.io/andriykalashnykov/dlib-docker` image used
+> by CI.
 
 ## Prerequisites
 
 | Tool | Version | Purpose |
 |------|---------|---------|
 | [GNU Make](https://www.gnu.org/software/make/) | 3.81+ | Build orchestration |
-| [Go](https://go.dev/dl/) | See `go.mod` | Go compiler and runtime |
-| [Docker](https://www.docker.com/) | latest | Container image builds |
-| [dlib](http://dlib.net/compile.html) | >= 19.10 | Face detection/recognition C++ library |
+| [Git](https://git-scm.com/) | latest | Clone testdata and release tags |
+| [Go](https://go.dev/dl/) | 1.26.2 | Go compiler and runtime (derived from `go.mod`) |
+| [Docker](https://www.docker.com/) | latest | Container image builds and `act` runs |
+| [dlib](http://dlib.net/compile.html) | ≥ 19.10 | Face detection/recognition C++ library |
 | [golangci-lint](https://golangci-lint.run/) | 2.11.4 | Static analysis (auto-installed by `make deps-lint`) |
 | [hadolint](https://github.com/hadolint/hadolint) | 2.14.0 | Dockerfile linting (auto-installed by `make deps-hadolint`) |
+| [gosec](https://github.com/securego/gosec) | 2.22.12 | Go security scanner (auto-installed by `make deps-gosec`) |
+| [govulncheck](https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck) | 1.1.4 | Go vulnerability scanner (auto-installed by `make deps-govulncheck`) |
 | [act](https://github.com/nektos/act) | 0.2.87 | Run GitHub Actions locally (optional, auto-installed by `make deps-act`) |
 
-Install all required dependencies:
+Install Go and Docker first, then let `make` install the rest lazily as needed:
 
 ```bash
 make deps
@@ -85,6 +109,18 @@ process.
 
 Run `make help` to see all available targets.
 
+### Dependencies
+
+| Target | Description |
+|--------|-------------|
+| `make deps` | Check Go is installed |
+| `make deps-docker` | Check Docker is installed |
+| `make deps-lint` | Install golangci-lint for static analysis |
+| `make deps-hadolint` | Install hadolint for Dockerfile linting |
+| `make deps-gosec` | Install gosec security scanner |
+| `make deps-govulncheck` | Install govulncheck vulnerability scanner |
+| `make deps-act` | Install act for local CI |
+
 ### Build & Run
 
 | Target | Description |
@@ -99,32 +135,89 @@ Run `make help` to see all available targets.
 
 | Target | Description |
 |--------|-------------|
-| `make lint` | Run static analysis and Dockerfile linting |
+| `make format-check` | Verify Go code is formatted |
+| `make lint` | Run golangci-lint and hadolint |
+| `make vulncheck` | Run govulncheck vulnerability scanner |
+| `make sec` | Run gosec security scanner |
+| `make static-check` | Run composite static-analysis gate (format, lint, vuln, sec) |
 | `make test` | Run tests with coverage |
 
 ### CI
 
 | Target | Description |
 |--------|-------------|
-| `make ci` | Full local CI pipeline (lint, test, build) |
-| `make ci-run` | Run GitHub Actions workflow locally via [act](https://github.com/nektos/act) |
+| `make ci` | Run full local CI pipeline |
+| `make ci-run` | Run GitHub Actions workflow locally using act |
+| `make ci-run-tag` | Run the tag-gated docker job under act (simulates tag push) |
 
 ### Docker
 
 | Target | Description |
 |--------|-------------|
+| `make image-bootstrap` | Bootstrap Docker buildx multi-platform builder |
 | `make image-build` | Build Docker image (amd64) |
 | `make image-run` | Run Docker image interactively (amd64) |
-| `make bootstrap` | Bootstrap Docker buildx multi-platform builder |
+| `make image-stop` | Stop any running `go-face` container |
 
 ### Utilities
 
 | Target | Description |
 |--------|-------------|
+| `make help` | List available tasks |
 | `make update` | Update dependency packages to latest versions |
 | `make release` | Create and push a new tag |
-| `make tag-delete` | Delete a git tag locally and remotely |
+| `make tag-delete` | Delete a git tag locally and remotely (`TAG=vN.N.N`) |
+| `make renovate-bootstrap` | Install nvm and node for Renovate |
 | `make renovate-validate` | Validate Renovate configuration |
+
+## CI/CD
+
+GitHub Actions runs on every push to `main`, tags (`v*`), and pull requests.
+The workflow is also `workflow_call`-able for downstream reuse.
+
+| Job | Triggers | Description |
+|-----|----------|-------------|
+| `static-check` | push, PR, tags | Runs `make static-check` (format-check, lint, vulncheck, sec) inside the dlib container |
+| `build` | push, PR, tags | Runs `make build` after `static-check` passes |
+| `test` | push, PR, tags | Runs `make test` after `static-check` passes |
+| `docker` | tags only | Builds and pushes multi-arch Docker images (`linux/amd64`, `linux/arm64`) to GHCR |
+| `ci-pass` | always | Aggregator that fails if any required job failed or was cancelled |
+
+A separate [cleanup workflow](.github/workflows/cleanup-runs.yml) removes old
+workflow runs and caches weekly.
+
+The `docker` job authenticates to GHCR using the built-in `GITHUB_TOKEN` — no
+additional secrets are required. [Renovate](https://docs.renovatebot.com/)
+keeps dependencies up to date with platform automerge enabled.
+
+### Pre-push image hardening
+
+The `docker` job runs on **every push** (not just tags) so multi-arch build
+regressions and cosign-installer breakage surface on the commit that introduced
+them. Login, push, and cosign signing are gated at step-level to tag pushes.
+All gates must pass before any image is published:
+
+| # | Gate | Catches | Tool |
+|---|------|---------|------|
+| 1 | Build local single-arch image | Build regressions on the runner architecture | `docker/build-push-action` with `load: true` |
+| 2 | Trivy image scan (`CRITICAL`/`HIGH` blocking) | CVEs in the `dlib-docker` base image, OS packages, and build layers | `aquasecurity/trivy-action` with `image-ref:` |
+| 3 | Smoke test | Image boots, Go toolchain runs, source files and `testdata/` are present | `docker run` invariant checks |
+| 4 | Multi-arch build + conditional push | `linux/arm64` cross-compile regressions; publishes both platforms on tag pushes | `docker/build-push-action` |
+| 5 | Cosign keyless OIDC signing | Sigstore signature on the manifest digest (tag-only, Phase 2) | `sigstore/cosign-installer` + `cosign sign` |
+
+Buildkit in-manifest attestations (`provenance` + `sbom`) are deliberately
+**disabled** so the OCI image index stays free of `unknown/unknown` platform
+entries — that lets the GHCR Packages UI render the "OS / Arch" tab for the
+multi-arch manifest. Cosign keyless signing still provides the Sigstore
+signature for supply-chain verification.
+
+Verify a published image's signature:
+
+```bash
+cosign verify ghcr.io/andriykalashnykov/go-face:<tag> \
+  --certificate-identity-regexp 'https://github\.com/AndriyKalashnykov/go-face/.+' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
 
 ## Models
 
@@ -154,7 +247,7 @@ To use go-face in your Go code:
 import "github.com/AndriyKalashnykov/go-face"
 ```
 
-To install go-face in your $GOPATH:
+To install go-face in your `$GOPATH`:
 
 ```bash
 go get github.com/AndriyKalashnykov/go-face
@@ -248,22 +341,11 @@ Run with:
 mkdir -p ~/go && cd ~/go  # Or cd to your $GOPATH
 mkdir -p src/go-face-example && cd src/go-face-example
 git clone https://github.com/Kagami/go-face-testdata testdata
-edit main.go  # Paste example code
-go get && go run main.go
+# Save the example above to main.go
+go mod init go-face-example
+go get github.com/AndriyKalashnykov/go-face
+go run main.go
 ```
-
-## CI/CD
-
-GitHub Actions runs on every push to `main`, tags `v*`, and pull requests.
-
-| Job | Triggers | Steps |
-|-----|----------|-------|
-| **ci** | push, PR, tags | Lint, Test, Build |
-| **release-docker-images** | tags only | Build and push multi-arch Docker images to GHCR |
-
-A separate [cleanup workflow](.github/workflows/cleanup-runs.yml) removes old workflow runs weekly.
-
-[Renovate](https://docs.renovatebot.com/) keeps dependencies up to date with platform automerge enabled.
 
 ## FAQ
 
