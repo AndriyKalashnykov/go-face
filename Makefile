@@ -21,7 +21,7 @@ ACT_VERSION         := 0.2.87
 # renovate: datasource=github-releases depName=nvm-sh/nvm
 NVM_VERSION         := 0.40.4
 # renovate: datasource=github-releases depName=securego/gosec
-GOSEC_VERSION       := 2.22.12
+GOSEC_VERSION       := 2.25.0
 # renovate: datasource=go depName=golang.org/x/vuln/cmd/govulncheck
 GOVULNCHECK_VERSION := 1.1.4
 
