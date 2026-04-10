@@ -1,0 +1,26 @@
+# Exclude VCS and CI metadata
+.git
+.github
+.claude
+.idea
+.vscode
+
+# Exclude local tool installs
+bin/
+dist/
+vendor/
+
+# Exclude docs and configs that don't belong in the image
+*.md
+LICENSE
+.gitignore
+.dockerignore
+.hadolint.yaml
+.nvmrc
+Makefile
+renovate.json
+version.txt
+
+# Test artifacts
+coverage.out
+**/coverage.out

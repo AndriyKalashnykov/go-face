@@ -26,5 +26,5 @@ vendor
 .idea
 dist/
 main
-bin/app
+bin/
 **coverage.out
