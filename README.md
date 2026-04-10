@@ -175,27 +175,49 @@ Run `make help` to see all available targets.
 GitHub Actions runs on every push to `main`, tags (`v*`), and pull requests.
 The workflow is also `workflow_call`-able for downstream reuse.
 
+### Per-lineage matrix
+
+go-face publishes one container image **per supported dlib-docker major
+version**. The set of supported lineages is declared in
+[`.dlib-versions.json`](./.dlib-versions.json) and fans out across the entire
+CI pipeline — `static-check`, `build`, `test`, and `docker` each run once per
+active entry, in parallel. A single tag push produces one published image per
+lineage, and each lineage ends up in its own GHCR sub-package:
+
+| Lineage | dlib-docker base | Image |
+|---------|------------------|-------|
+| `dlib19` | `dlib-docker:v19.24.4` | `ghcr.io/andriykalashnykov/go-face/dlib19` |
+
+Adding a new lineage is a one-line change to `.dlib-versions.json` — or you
+can let the automation do it (see "Automated releases" below).
+
+### Jobs
+
 | Job | Triggers | Description |
 |-----|----------|-------------|
-| `static-check` | push, PR, tags | Runs `make static-check` (format-check, lint, vulncheck, sec) inside the dlib container |
-| `build` | push, PR, tags | Runs `make build` after `static-check` passes |
-| `test` | push, PR, tags | Runs `make test` after `static-check` passes |
-| `docker` | tags only | Builds and pushes multi-arch Docker images (`linux/amd64`, `linux/arm64`) to GHCR |
-| `ci-pass` | always | Aggregator that fails if any required job failed or was cancelled |
+| `setup` | push, PR, tags | Reads `.dlib-versions.json` and emits the matrix used by downstream jobs |
+| `static-check` | push, PR, tags | `make static-check` (format-check, lint, vulncheck, sec), once per active dlib lineage |
+| `build` | push, PR, tags | `make build`, once per active dlib lineage |
+| `test` | push, PR, tags | `make test`, once per active dlib lineage |
+| `docker` | push, PR, tags | Hardened image pipeline, once per active dlib lineage. Builds and cosign-signs on tag pushes; validation-only on non-tag pushes |
+| `ci-pass` | always | Aggregator gate. Fails if **any** matrix expansion of **any** job failed or was cancelled |
 
 A separate [cleanup workflow](.github/workflows/cleanup-runs.yml) removes old
 workflow runs and caches weekly.
 
 The `docker` job authenticates to GHCR using the built-in `GITHUB_TOKEN` — no
-additional secrets are required. [Renovate](https://docs.renovatebot.com/)
-keeps dependencies up to date with platform automerge enabled.
+additional secrets are required for publishing. [Renovate](https://docs.renovatebot.com/)
+keeps dependencies (including `dlib-docker` tag+digest pairs in
+`.dlib-versions.json`) up to date with platform automerge enabled.
 
 ### Pre-push image hardening
 
 The `docker` job runs on **every push** (not just tags) so multi-arch build
 regressions and cosign-installer breakage surface on the commit that introduced
 them. Login, push, and cosign signing are gated at step-level to tag pushes.
-All gates must pass before any image is published:
+Every matrix entry goes through the same five gates — one bad lineage does not
+block the others (`fail-fast: false`), but `ci-pass` still fails the run so no
+image is published partially:
 
 | # | Gate | Catches | Tool |
 |---|------|---------|------|
@@ -203,21 +225,73 @@ All gates must pass before any image is published:
 | 2 | Trivy image scan (`CRITICAL`/`HIGH` blocking) | CVEs in the `dlib-docker` base image, OS packages, and build layers | `aquasecurity/trivy-action` with `image-ref:` |
 | 3 | Smoke test | Image boots, Go toolchain runs, source files and `testdata/` are present | `docker run` invariant checks |
 | 4 | Multi-arch build + conditional push | `linux/arm64` cross-compile regressions; publishes both platforms on tag pushes | `docker/build-push-action` |
-| 5 | Cosign keyless OIDC signing | Sigstore signature on the manifest digest (tag-only, Phase 2) | `sigstore/cosign-installer` + `cosign sign` |
+| 5 | Cosign keyless OIDC signing | Sigstore signature on the manifest digest (tag-only) | `sigstore/cosign-installer` + `cosign sign` |
 
 Buildkit in-manifest attestations (`provenance` + `sbom`) are deliberately
 **disabled** so the OCI image index stays free of `unknown/unknown` platform
 entries — that lets the GHCR Packages UI render the "OS / Arch" tab for the
 multi-arch manifest. Cosign keyless signing still provides the Sigstore
-signature for supply-chain verification.
+signature for supply-chain verification. The base image name and digest are
+recorded in each published manifest as
+`org.opencontainers.image.base.name` and `org.opencontainers.image.base.digest`
+OCI labels so consumers can see exactly which `dlib-docker` build produced
+a given image.
 
 Verify a published image's signature:
 
 ```bash
-cosign verify ghcr.io/andriykalashnykov/go-face:<tag> \
+cosign verify ghcr.io/andriykalashnykov/go-face/dlib19:<tag> \
   --certificate-identity-regexp 'https://github\.com/AndriyKalashnykov/go-face/.+' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
+
+Replace `dlib19` with whichever lineage you are pulling.
+
+### Automated releases
+
+New dlib-docker releases flow into new go-face releases automatically. There
+are three workflows involved:
+
+| Workflow | Trigger | What it does |
+|----------|---------|--------------|
+| [`dlib-poll.yml`](.github/workflows/dlib-poll.yml) | Daily cron + `workflow_dispatch` | Queries the `dlib-docker` GHCR package, compares the set of observed major versions against `.dlib-versions.json`, and opens an auto-merging PR that adds any new majors. |
+| `renovate` (SaaS) | On its own schedule | Bumps the `dlib_docker_tag` + `dlib_docker_digest` pair of **existing** lineages when `dlib-docker` repushes an existing tag with a new digest or ships a new patch within an existing major line. |
+| [`auto-release.yml`](.github/workflows/auto-release.yml) | `push` to `main` touching `.dlib-versions.json` | Bumps the **patch** in `version.txt`, commits as `Cut vX.Y.Z release`, creates the matching git tag, and pushes both. The tag push retriggers `ci.yml`, which matrix-builds and cosign-signs every active lineage. |
+
+Together:
+
+1. `dlib-docker` ships a new version →
+2. Renovate (for digest bumps) or `dlib-poll` (for new majors) opens a PR →
+3. CI runs against the proposed update; auto-merge squashes it into `main` on green →
+4. `auto-release` bumps `version.txt` patch, cuts the next tag, pushes →
+5. `ci.yml` fans out across every active lineage, publishes, and cosign-signs →
+6. Consumers pulling `ghcr.io/andriykalashnykov/go-face/dlib19:<latest>` get the new build.
+
+Minor and major version bumps stay **manual** — when you change go-face's own
+code (not just the base image), use `make release` to cut a tag directly.
+
+#### Required secret: `RELEASE_PAT`
+
+`auto-release.yml` needs a Personal Access Token to push tags, because tags
+pushed with `GITHUB_TOKEN` deliberately do not trigger downstream workflows.
+Without `RELEASE_PAT`, the new tag would land in the repo but `ci.yml` would
+not fire against it.
+
+Create a **classic PAT** with these scopes:
+
+- `contents: write` — push commits and tags
+- `workflow` — allows the token to push changes under `.github/workflows/`
+  (not strictly required by `auto-release.yml` today, but future-proofs
+  against workflow edits needing to ship alongside a release)
+
+Add it at **Settings → Secrets and variables → Actions → New repository
+secret** with the name `RELEASE_PAT`. The workflow fails fast with a clear
+error message if the secret is missing.
+
+> A fine-grained PAT scoped to this single repo also works, with the same
+> permissions: **Contents: Read and write** and **Workflows: Read and write**.
+> A GitHub App installation token is the production-grade alternative if you
+> want to avoid PAT rotation, but requires more setup.
 
 ## Models
 

@@ -1,6 +1,11 @@
-ARG BUILDER_IMAGE="ghcr.io/andriykalashnykov/dlib-docker:v19.24.4@sha256:91ea2d6b8b86c52069db6a554442862897fb53ba7365f691500dc0f06fe4578f"
+ARG BUILDER_IMAGE="ghcr.io/andriykalashnykov/dlib-docker:19.24.9@sha256:9cfeadcd58bb474783eec3471b19bcdde1c160b91b06e06df15ef6b5fc4fd95d"
 
 FROM ${BUILDER_IMAGE} AS builder
+
+# dlib-docker's default USER is appuser (uid 1000); switch to root for
+# build-time steps (apt, Go install to /usr/local). A later `USER` at
+# the bottom of this file drops the final-stage runtime back to nobody.
+USER root
 
 ARG DEBIAN_FRONTEND=noninteractive
 

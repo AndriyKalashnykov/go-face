@@ -1,0 +1,74 @@
+name: Auto-release on .dlib-versions.json change
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.dlib-versions.json'
+
+concurrency:
+  group: auto-release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    # Anti-recursion: skip if the push came from the release bot, and skip
+    # if the head-commit message starts with "Cut v" (defense in depth).
+    if: >-
+      github.actor != 'go-face-release-bot' &&
+      github.actor != 'github-actions[bot]' &&
+      !startsWith(github.event.head_commit.message, 'Cut v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check RELEASE_PAT is configured
+        env:
+          RELEASE_PAT: ${{ secrets.RELEASE_PAT }}
+        run: |
+          if [ -z "${RELEASE_PAT:-}" ]; then
+            echo "::error::RELEASE_PAT secret is not configured. See README 'Automated releases' section."
+            exit 1
+          fi
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+          # PAT is required so the tag push triggers ci.yml. A push made with
+          # GITHUB_TOKEN deliberately does NOT trigger downstream workflows to
+          # prevent infinite loops.
+          token: ${{ secrets.RELEASE_PAT }}
+
+      - name: Bump patch and cut tag
+        run: |
+          set -euo pipefail
+
+          current=$(tr -d '[:space:]' < version.txt)
+          if [[ ! "$current" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::version.txt does not match vN.N.N: '$current'"
+            exit 1
+          fi
+
+          IFS='.' read -r major minor patch <<< "${current#v}"
+          next="v${major}.${minor}.$((patch + 1))"
+          echo "Current: $current"
+          echo "Next:    $next"
+
+          # Abort if the tag already exists (e.g. a human cut it in parallel).
+          if git rev-parse --verify --quiet "refs/tags/$next" >/dev/null; then
+            echo "::warning::Tag $next already exists; skipping auto-release."
+            exit 0
+          fi
+
+          echo "$next" > version.txt
+          git config user.email 'go-face-release-bot@users.noreply.github.com'
+          git config user.name 'go-face-release-bot'
+          git add version.txt
+          git commit -m "Cut $next release"
+          git tag "$next"
+          git push origin main
+          git push origin "$next"
+
+          echo "Released $next."
