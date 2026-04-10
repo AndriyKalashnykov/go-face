@@ -107,8 +107,12 @@ vulncheck: deps-govulncheck
 	@govulncheck ./...
 
 #sec: @ Run gosec security scanner
+# G115 (integer overflow) is excluded because this package wraps dlib via
+# CGo, and every `_Ctype_int(len(slice))` / `_Ctype_ulong(size)` conversion
+# is flagged as a false positive. golangci-lint's gosec integration
+# excludes G115 by default for the same reason.
 sec: deps-gosec
-	@gosec -quiet ./...
+	@gosec -quiet -exclude=G115 ./...
 
 #static-check: @ Run composite static-analysis gate (format, lint, vuln, sec)
 static-check: format-check lint vulncheck sec
