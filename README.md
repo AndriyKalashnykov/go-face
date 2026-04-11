@@ -5,24 +5,92 @@
 
 # go-face
 
-go-face implements face recognition for Go using [dlib](http://dlib.net), a
-popular machine learning toolkit. Read
-[Face recognition with Go](https://hackernoon.com/face-recognition-with-go-676a555b8a7e)
-article for some background details if you're new to
-[FaceNet](https://arxiv.org/abs/1503.03832) concept.
+go-face provides **face recognition for Go** via CGo bindings to [dlib](http://dlib.net) — the C++ machine learning toolkit that implements the [FaceNet](https://arxiv.org/abs/1503.03832) embedding approach. This repo is a maintained fork of [Kagami/go-face](https://github.com/Kagami/go-face) with a hardened multi-architecture container publishing pipeline bolted on top. For background on how the underlying recognition works, read [Face recognition with Go](https://hackernoon.com/face-recognition-with-go-676a555b8a7e).
+
+**Two ways to consume this project:**
+
+1. **As a pre-built Docker builder image** (recommended for CGo-shy users). Pull `ghcr.io/andriykalashnykov/go-face/dlib19:<tag>` or `ghcr.io/andriykalashnykov/go-face/dlib20:<tag>` and `FROM` it in your own `Dockerfile` — you inherit a full C++ toolchain, dlib (both shared **and** static), Go, libjpeg/libpng/BLAS/LAPACK, the `go-face` source tree mounted at `/app`, and Kagami's test data. No local dlib install, no cmake compile on your CI runner. Jump to [Using as a builder image](#using-as-a-builder-image).
+2. **As a Go library** via `go get github.com/AndriyKalashnykov/go-face`. Works like any Go package, but requires dlib + libjpeg on the host before `go build` / `go test` will link. See [dlib Installation](#dlib-installation).
+
+**Position in the image-build chain.** go-face is the middle link of a three-repo chain maintained by the same author:
+
+```
+ghcr.io/andriykalashnykov/dlib-docker:<dlib-version>
+  ↓  (digest-pinned FROM)
+ghcr.io/andriykalashnykov/go-face/dlib<major>:<go-face-version>   ← this repo
+  ↓  (digest-pinned FROM, per CI matrix cell)
+ghcr.io/andriykalashnykov/go-face-recognition:<app-version>
+```
+
+The upstream [`dlib-docker`](https://github.com/AndriyKalashnykov/dlib-docker) repo provides the Ubuntu+dlib base image (with both `libdlib.so` and `libdlib.a`). This repo adds the Go toolchain and the go-face CGo source tree on top, publishing **one image per active dlib major lineage** so downstream consumers can pin to a specific dlib ABI. The downstream [`go-face-recognition`](https://github.com/AndriyKalashnykov/go-face-recognition) application is a worked example of static-linking a CGo binary against this image's `libdlib.a`.
+
+## What this fork adds on top of upstream Kagami/go-face
+
+- **Multi-architecture pre-built Docker images** published per-release to GHCR for `linux/amd64`, `linux/arm64`, and `linux/arm/v7` as a single multi-arch manifest list.
+- **Per-lineage matrix build.** The active dlib majors are declared in [`.dlib-versions.json`](./.dlib-versions.json); CI fans out `static-check`, `build`, `test`, and `docker` once per lineage so each supported dlib ABI is validated on every commit.
+- **Hardened image publishing pipeline.** Trivy image scan (CRITICAL/HIGH blocking), smoke test, cosign keyless OIDC signing via Sigstore Fulcio → Rekor, and `fail-fast: false` so one broken lineage doesn't block the others.
+- **Automated release plumbing** that watches upstream `dlib-docker` and `davisking/dlib` for new versions and bumps `.dlib-versions.json` automatically — see [Automated releases](#automated-releases) below.
+- **Pinned, reproducible tooling** — Go version, `dlib-docker` digest, linters, scanners, and GitHub Actions are all version- and digest-pinned, with Renovate keeping them fresh via branch-automerge squash PRs.
 
 | Component | Technology |
 |-----------|------------|
-| Language | Go 1.26.2 |
-| Native bindings | C++ via CGo |
-| Recognition engine | [dlib](http://dlib.net) ≥ 19.10 |
-| Image decoding | libjpeg (turbo) |
-| Testing | `go test` (race, coverage) |
-| Containers | Docker buildx (multi-arch) |
-| CI/CD | GitHub Actions |
+| Language | Go 1.26.2 (version derived from `go.mod`, kept fresh by Renovate) |
+| Native bindings | C++ via CGo linking `libdlib` |
+| Recognition engine | [dlib](http://dlib.net) ≥ 19.24 — provided by the `dlib-docker` base image |
+| Image decoding | libjpeg (turbo) — from the `dlib-docker` base image |
+| Base image | `ghcr.io/andriykalashnykov/dlib-docker:<tag>@<digest>`, one per active dlib major lineage, pinned in [`.dlib-versions.json`](./.dlib-versions.json) |
+| Published platforms | `linux/amd64`, `linux/arm64`, `linux/arm/v7` (single multi-arch manifest list per lineage × version) |
+| Image signing | [Cosign](https://docs.sigstore.dev/cosign/overview/) keyless (Sigstore Fulcio → Rekor, tag-pushes only) |
+| Testing | `go test -race -cover`, Kagami's `go-face-testdata` models |
+| Containers | Docker buildx multi-platform (QEMU emulation for arm) |
+| CI/CD | GitHub Actions with per-lineage matrix |
 | Static analysis | golangci-lint 2.11.4, hadolint 2.14.0 |
-| Security | govulncheck 1.1.4, gosec 2.22.12 |
-| Dependency updates | Renovate |
+| Security | govulncheck 1.1.4, gosec 2.22.12, Trivy image scan |
+| Dependency updates | Renovate (branch automerge, squash) + `dlib-poll` workflow for new dlib majors |
+
+## Using as a builder image
+
+Minimal template for a downstream `Dockerfile` that builds a CGo binary on top of a specific `go-face` lineage image:
+
+```dockerfile
+# Pin to a specific lineage + tag + digest. Pick the dlib major that matches
+# the ABI contract your application needs — dlib20 is the current primary.
+# Renovate can keep the digest fresh automatically via a docker-image manager.
+ARG BUILDER_IMAGE="ghcr.io/andriykalashnykov/go-face/dlib20:0.1.4@sha256:<current-digest>"
+
+FROM ${BUILDER_IMAGE} AS builder
+
+# This image drops to USER 65534:65534 (nobody) at the end of its own
+# Dockerfile for a safe non-root sandbox default. In a downstream builder
+# stage you almost always need root — to write Go module / build caches,
+# to apt-get install extra packages, etc. Reset it here; your runtime
+# stage should drop back to a non-root numeric UID.
+USER root
+
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+# Static link a fully self-contained binary against libdlib.a from the
+# underlying dlib-docker layer. LIBRARY_PATH=/usr/local/lib is inherited
+# from dlib-docker so `-ldlib` resolves the static archive with no -L flag.
+RUN CGO_ENABLED=1 go build \
+        -trimpath -ldflags "-s -w -extldflags -static" \
+        -tags "static netgo cgo static_build" \
+        -o /out/my-app ./cmd/my-app
+
+# Minimal runtime stage — non-root, apk upgrade for CVEs between base cuts.
+FROM alpine:3.23.3 AS runtime
+RUN apk --no-cache upgrade && adduser -u 10001 -S -D app
+WORKDIR /app
+COPY --from=builder /out/my-app .
+USER 10001
+CMD ["/app/my-app"]
+```
+
+For a full, end-to-end worked example — including a CI matrix that builds against both `dlib19` and `dlib20` in parallel, extracts per-platform binaries, and publishes them as signed GitHub Release assets — see [`AndriyKalashnykov/go-face-recognition`](https://github.com/AndriyKalashnykov/go-face-recognition).
 
 ## Quick Start
 
@@ -184,9 +252,17 @@ CI pipeline — `static-check`, `build`, `test`, and `docker` each run once per
 active entry, in parallel. A single tag push produces one published image per
 lineage, and each lineage ends up in its own GHCR sub-package:
 
-| Lineage | dlib-docker base | Image |
-|---------|------------------|-------|
-| `dlib19` | `dlib-docker:v19.24.4` | `ghcr.io/andriykalashnykov/go-face/dlib19` |
+| Lineage | dlib-docker base tag | Published image |
+|---------|----------------------|-----------------|
+| `dlib19` | `ghcr.io/andriykalashnykov/dlib-docker:19.24.9` | [`ghcr.io/andriykalashnykov/go-face/dlib19`](https://github.com/AndriyKalashnykov/go-face/pkgs/container/go-face%2Fdlib19) |
+| `dlib20` | `ghcr.io/andriykalashnykov/dlib-docker:20.0.1` | [`ghcr.io/andriykalashnykov/go-face/dlib20`](https://github.com/AndriyKalashnykov/go-face/pkgs/container/go-face%2Fdlib20) |
+
+Each image is a multi-arch manifest list covering `linux/amd64`, `linux/arm64`,
+and `linux/arm/v7`. The exact `dlib-docker` digest each lineage is pinned
+against is tracked in [`.dlib-versions.json`](./.dlib-versions.json) and kept
+fresh by Renovate (digest updates within an existing major) or the
+[`dlib-poll` workflow](#automated-releases) (when a new dlib major appears
+upstream).
 
 Adding a new lineage is a one-line change to `.dlib-versions.json` — or you
 can let the automation do it (see "Automated releases" below).
@@ -221,11 +297,11 @@ image is published partially:
 
 | # | Gate | Catches | Tool |
 |---|------|---------|------|
-| 1 | Build local single-arch image | Build regressions on the runner architecture | `docker/build-push-action` with `load: true` |
-| 2 | Trivy image scan (`CRITICAL`/`HIGH` blocking) | CVEs in the `dlib-docker` base image, OS packages, and build layers | `aquasecurity/trivy-action` with `image-ref:` |
-| 3 | Smoke test | Image boots, Go toolchain runs, source files and `testdata/` are present | `docker run` invariant checks |
-| 4 | Multi-arch build + conditional push | `linux/arm64` cross-compile regressions; publishes both platforms on tag pushes | `docker/build-push-action` |
-| 5 | Cosign keyless OIDC signing | Sigstore signature on the manifest digest (tag-only) | `sigstore/cosign-installer` + `cosign sign` |
+| 1 | Build local single-arch image | Build regressions on the runner architecture — including CGo link failures, missing apt packages in the `dlib-docker` base, and Go version drift | `docker/build-push-action` with `load: true` |
+| 2 | **Trivy image scan** (`CRITICAL`/`HIGH` blocking) | CVEs in the `dlib-docker` base image, OS packages, and build layers — things a source-tree scan cannot see because they live inside the built image | `aquasecurity/trivy-action` with `image-ref:` |
+| 3 | **Smoke test** | Image boots, Go toolchain runs (`/usr/local/go/bin/go version`), source files (`/app/face.go`, `/app/facerec.cc`) and `/app/testdata/` are present — regression guard for accidental `.dockerignore` filtering or `COPY` path drift | `docker run` + invariant probe |
+| 4 | **Multi-arch build + conditional push** | Cross-compile regressions for `linux/amd64`, `linux/arm64`, **and `linux/arm/v7`** — all three published as a single manifest list on tag push. `linux/arm/v7` was added 2026-04-11 to match downstream `go-face-recognition`'s platform matrix; see commit `7f2d4ac` for the pre-existing gap that was hidden by an earlier libdlib.a blocker. | `docker/build-push-action` with `push: ${{ startsWith(github.ref, 'refs/tags/') }}` |
+| 5 | **Cosign keyless OIDC signing** (tag push only) | Tampered or unsigned images — every published `tag@digest` gets a Sigstore signature keyed to the GitHub Actions workflow's OIDC identity. No pre-shared key, no long-lived secrets. | `sigstore/cosign-installer` + `cosign sign --yes <tag>@<digest>` |
 
 Buildkit in-manifest attestations (`provenance` + `sbom`) are deliberately
 **disabled** so the OCI image index stays free of `unknown/unknown` platform
