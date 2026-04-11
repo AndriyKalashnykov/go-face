@@ -6,6 +6,12 @@
       "dlib_docker_tag": "19.24.9",
       "dlib_docker_digest": "sha256:9cfeadcd58bb474783eec3471b19bcdde1c160b91b06e06df15ef6b5fc4fd95d",
       "status": "active"
+    },
+    {
+      "image_tag": "dlib20",
+      "dlib_docker_tag": "20.0.1",
+      "dlib_docker_digest": "sha256:615f4ed238de2fd37d8c9d7138296bea6ed7a4cfd28a4f79a5572c82526a4caa",
+      "status": "active"
     }
   ]
 }
