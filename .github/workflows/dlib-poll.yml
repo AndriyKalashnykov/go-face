@@ -38,7 +38,9 @@ jobs:
             > /tmp/versions.jsonl
 
           # Flatten into "tag digest" lines, keeping only clean semver tags.
-          jq -r 'select(.tags | length > 0) | .digest as $d | .tags[] | select(test("^v[0-9]+\\.[0-9]+\\.[0-9]+$")) | "\(.)\t\($d)"' \
+          # dlib-docker publishes vless tags (e.g. 19.24.9, 20.0.1); the v? is
+          # defensive in case upstream ever switches.
+          jq -r 'select(.tags | length > 0) | .digest as $d | .tags[] | select(test("^v?[0-9]+\\.[0-9]+\\.[0-9]+$")) | "\(.)\t\($d)"' \
             /tmp/versions.jsonl > /tmp/tags.tsv
 
           if [ ! -s /tmp/tags.tsv ]; then
@@ -49,7 +51,7 @@ jobs:
 
           # Existing majors in .dlib-versions.json (e.g. 19 20).
           jq -r '.versions[].dlib_docker_tag' .dlib-versions.json \
-            | sed -n 's/^v\([0-9]\+\)\..*/\1/p' \
+            | sed -n 's/^v\?\([0-9]\+\)\..*/\1/p' \
             | sort -u > /tmp/known-majors.txt
 
           # For every observed major, pick the highest semver tag.
