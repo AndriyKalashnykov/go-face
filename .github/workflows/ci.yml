@@ -248,7 +248,13 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          platforms: linux/amd64,linux/arm64
+          # Must match go-face-recognition's docker matrix platforms
+          # (linux/amd64,linux/arm64,linux/arm/v7). The downstream repo's
+          # CI builds its binary on top of these images, so any platform
+          # published downstream must also be published here. linux/arm/v7
+          # was historically missing from this list — downstream CI was
+          # broken for arm/v7 but the libdlib.a blocker hid the symptom.
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
           push: ${{ startsWith(github.ref, 'refs/tags/') }}
           provenance: false
           sbom: false
