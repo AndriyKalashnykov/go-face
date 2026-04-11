@@ -131,47 +131,44 @@ Install Go and Docker first, then let `make` install the rest lazily as needed:
 make deps
 ```
 
-### dlib Installation
+### Native dlib install (go get path only)
 
-#### Ubuntu 18.10+, Debian
+You only need this section if you're consuming go-face as a **Go library**
+(`go get github.com/AndriyKalashnykov/go-face`) and want `go build` / `go test`
+to link on your host without Docker. **Docker builder image consumers can skip
+this entirely** — the `dlib-docker` layer at the bottom of the chain already
+provides dlib + libjpeg + BLAS/LAPACK preinstalled.
+
+**Ubuntu / Debian:**
 
 ```bash
-# Ubuntu
 sudo apt-get install libdlib-dev libblas-dev libatlas-base-dev liblapack-dev libjpeg-turbo8-dev
-# Debian
-sudo apt-get install libdlib-dev libblas-dev libatlas-base-dev liblapack-dev libjpeg62-turbo-dev
+# On older Debian releases, libjpeg-turbo8-dev is named libjpeg62-turbo-dev
 ```
 
-#### macOS
+> ⚠️ **Version drift vs. the Docker chain.** Ubuntu's stock `libdlib-dev` on
+> `noble` ships **dlib 19.24.0**, which is older than this project's
+> `dlib-docker` chain (currently 19.24.9 and 20.0.1, built from source at
+> pinned upstream tags). The ABI is compatible for go-face's API surface,
+> but host-linked binaries will call into an older dlib than Docker-linked
+> binaries. If your application cares about the exact dlib release it runs
+> against (e.g. you depend on a specific face-landmark model or a CVE fix),
+> use the Docker path or build dlib from source.
 
-Make sure you have [Homebrew](https://brew.sh) installed.
+**macOS** (Homebrew, builds are `arm64` on Apple Silicon):
 
 ```bash
 brew install dlib
 ```
 
-#### Windows
-
-Make sure you have [MSYS2](https://www.msys2.org) installed.
-
-1. Run `MSYS2 MSYS` shell from Start menu
-2. Run `pacman -Syu` and if it asks you to close the shell do that
-3. Run `pacman -Syu` again
-4. Run `pacman -S mingw-w64-x86_64-gcc mingw-w64-x86_64-dlib`
-5.
-   1. If you already have Go and Git installed and available in PATH uncomment
-      `set MSYS2_PATH_TYPE=inherit` line in `msys2_shell.cmd` located in MSYS2
-      installation folder
-   2. Otherwise run `pacman -S mingw-w64-x86_64-go git`
-6. Run `MSYS2 MinGW 64-bit` shell from Start menu to compile and use go-face
-
-#### Other systems
-
-Try to install dlib/libjpeg with package manager of your distribution or
-[compile from sources](http://dlib.net/compile.html). Note that go-face won't
-work with old packages of dlib such as libdlib18. Alternatively create issue
-with the name of your system and someone might help you with the installation
-process.
+**Other systems:** install dlib + libjpeg from your distribution's package
+manager, or [compile dlib from source](http://dlib.net/compile.html). go-face
+does not work against `libdlib18` or older. Windows/MSYS2 is no longer
+documented here — we recommend
+[WSL2](https://learn.microsoft.com/en-us/windows/wsl/install) with Ubuntu and
+the instructions above. If you need platform coverage we don't provide, the
+same native install instructions live in
+[upstream Kagami/go-face](https://github.com/Kagami/go-face#requirements).
 
 ## Available Make Targets
 
