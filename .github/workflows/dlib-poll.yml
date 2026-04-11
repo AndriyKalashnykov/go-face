@@ -95,7 +95,11 @@ jobs:
         id: cpr
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # RELEASE_PAT (not GITHUB_TOKEN): PRs and merges authored by
+          # GITHUB_TOKEN do not fire downstream workflows, so ci.yml +
+          # auto-release.yml would be skipped on merge. Using a PAT makes
+          # the merge push look like a human push and triggers both.
+          token: ${{ secrets.RELEASE_PAT }}
           branch: auto/dlib-lineage
           delete-branch: true
           commit-message: 'chore(all): add new dlib-docker lineage'
@@ -114,6 +118,6 @@ jobs:
       - name: Enable auto-merge
         if: steps.discover.outputs.added == 'true' && steps.cpr.outputs.pull-request-number != ''
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASE_PAT }}
           PR: ${{ steps.cpr.outputs.pull-request-number }}
         run: gh pr merge --auto --squash "$PR"
