@@ -4,13 +4,13 @@
     {
       "image_tag": "dlib19",
       "dlib_docker_tag": "19.24.9",
-      "dlib_docker_digest": "sha256:9cfeadcd58bb474783eec3471b19bcdde1c160b91b06e06df15ef6b5fc4fd95d",
+      "dlib_docker_digest": "sha256:902f590abe5dd87550e16db13124e44b43c4575f4c7f873ff0b58c93ed935be0",
       "status": "active"
     },
     {
       "image_tag": "dlib20",
       "dlib_docker_tag": "20.0.1",
-      "dlib_docker_digest": "sha256:615f4ed238de2fd37d8c9d7138296bea6ed7a4cfd28a4f79a5572c82526a4caa",
+      "dlib_docker_digest": "sha256:b223dfc86b4a05d625263ff1c82dab4dcfcd2606761273b5c198049fe5e2a4be",
       "status": "active"
     }
   ]
